@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -190,6 +191,7 @@ class _LoginPageState extends State<LoginPage> {
                         child: ElevatedButton(
                           onPressed: () {
                             // TODO: Implement login logic
+                            context.go('/home');
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF1E3A8A),
@@ -221,7 +223,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     TextButton(
                       onPressed: () {
-                        Navigator.pushNamed(context, '/register');
+                        context.go('/register');
                       },
                       child: const Text(
                         'Sign Up',

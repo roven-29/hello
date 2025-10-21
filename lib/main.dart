@@ -1,12 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/welcome_page.dart';
-import 'screens/fitness_quote_page.dart';
-import 'screens/motivational_quote_page.dart';
-import 'screens/login_page.dart';
-import 'screens/register_page.dart';
-import 'screens/gender_selection_page.dart';
-import 'screens/age_height_page.dart';
-import 'screens/weight_goals_page.dart';
+import 'navigation/app_router.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,22 +10,63 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'FlexMind Fit',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF007BFF),
+          brightness: Brightness.light,
+        ),
         useMaterial3: true,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF007BFF),
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        cardTheme: CardTheme(
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF007BFF),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
       ),
-      home: const WelcomePage(),
-      routes: {
-        '/fitness': (context) => const FitnessQuotePage(),
-        '/motivational': (context) => const MotivationalQuotePage(),
-        '/login': (context) => const LoginPage(),
-        '/register': (context) => const RegisterPage(),
-        '/gender': (context) => const GenderSelectionPage(),
-        '/age-height': (context) => const AgeHeightPage(),
-        '/weight-goals': (context) => const WeightGoalsPage(),
-      },
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF007BFF),
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF007BFF),
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        cardTheme: CardTheme(
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF007BFF),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ),
+      routerConfig: router,
     );
   }
 }

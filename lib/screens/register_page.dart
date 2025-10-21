@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -24,7 +25,7 @@ class _RegisterPageState extends State<RegisterPage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => context.go('/login'),
         ),
       ),
       body: SingleChildScrollView(
@@ -122,7 +123,7 @@ class _RegisterPageState extends State<RegisterPage> {
               child: ElevatedButton(
                 onPressed: () {
                   // Handle registration
-                  Navigator.pushNamed(context, '/gender');
+                  context.go('/home');
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.deepPurple,
@@ -146,7 +147,7 @@ class _RegisterPageState extends State<RegisterPage> {
               children: [
                 const Text('Already have an account? '),
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => context.go('/login'),
                   child: const Text(
                     'Sign In',
                     style: TextStyle(

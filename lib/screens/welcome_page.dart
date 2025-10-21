@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
@@ -39,7 +40,7 @@ class _WelcomePageState extends State<WelcomePage>
   }
 
   void _navigateToFitness() {
-    Navigator.pushReplacementNamed(context, '/fitness');
+    context.go('/home');
   }
 
   @override
