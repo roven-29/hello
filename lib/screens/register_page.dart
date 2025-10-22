@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../services/auth_service.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -15,6 +16,60 @@ class _RegisterPageState extends State<RegisterPage> {
   final _confirmPasswordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  bool _isLoading = false;
+
+  void _register() async {
+    if (_nameController.text.isEmpty || 
+        _emailController.text.isEmpty || 
+        _passwordController.text.isEmpty || 
+        _confirmPasswordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill in all fields'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Passwords do not match'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (AuthService().userExists(_emailController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User already exists with this email'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Simulate network delay
+    await Future.delayed(const Duration(seconds: 1));
+
+    // Navigate to height selection page
+    if (mounted) {
+      context.go('/height-selection', extra: {
+        'email': _emailController.text,
+        'password': _passwordController.text,
+        'name': _nameController.text,
+        'age': 25, // Default age, will be collected in the flow
+        'gender': 'Male', // Default gender, will be collected in the flow
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,24 +176,30 @@ class _RegisterPageState extends State<RegisterPage> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: () {
-                  // Handle registration
-                  context.go('/home');
-                },
+                onPressed: _isLoading ? null : _register,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.deepPurple,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  'Sign Up',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text(
+                        'Sign Up',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ),
             const SizedBox(height: 24),

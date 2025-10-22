@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:go_router/go_router.dart';
+import '../services/auth_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -220,6 +222,12 @@ class _SettingsPageState extends State<SettingsPage> {
                       },
                     ),
                     _buildListTile(
+                      title: 'Logout',
+                      subtitle: 'Sign out of your account',
+                      icon: Icons.logout,
+                      onTap: () => _showLogoutDialog(),
+                    ),
+                    _buildListTile(
                       title: 'Delete Account',
                       subtitle: 'Permanently delete your account',
                       icon: Icons.delete_forever,
@@ -429,6 +437,34 @@ class _SettingsPageState extends State<SettingsPage> {
         const Text('• Progress tracking'),
         const Text('• Goal setting and reminders'),
       ],
+    );
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              AuthService().signOut();
+              context.go('/login');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF007BFF),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
     );
   }
 

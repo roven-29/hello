@@ -1,7 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'navigation/app_router.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -23,7 +26,7 @@ class MyApp extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 0,
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           elevation: 4,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -50,7 +53,7 @@ class MyApp extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 0,
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           elevation: 4,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),

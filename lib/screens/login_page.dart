@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -12,6 +13,48 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
+
+  void _login() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill in all fields'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Simulate network delay
+    await Future.delayed(const Duration(seconds: 1));
+
+    bool success = AuthService().signIn(_emailController.text, _passwordController.text);
+    
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (success) {
+      if (mounted) {
+        context.go('/home');
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invalid email or password'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,10 +232,7 @@ class _LoginPageState extends State<LoginPage> {
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: () {
-                            // TODO: Implement login logic
-                            context.go('/home');
-                          },
+                          onPressed: _isLoading ? null : _login,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF1E3A8A),
                             foregroundColor: Colors.white,
@@ -200,13 +240,22 @@ class _LoginPageState extends State<LoginPage> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
-                            'Sign In',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Text(
+                                  'Sign In',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                         ),
                       ),
                     ],

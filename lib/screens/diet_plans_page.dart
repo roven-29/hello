@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../data/dummy_data.dart';
+import '../models/meal.dart';
 
 class DietPlansPage extends StatelessWidget {
   const DietPlansPage({super.key});

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:confetti/confetti.dart';
 import 'dart:async';
 import '../data/dummy_data.dart';
+import '../models/exercise.dart';
 
 class ExerciseTimerPage extends StatefulWidget {
   final String exerciseId;
