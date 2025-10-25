@@ -1,22 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../models/user.dart';
+import '../services/auth_service.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
   @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  Map<String, dynamic>? userData;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final data = await AuthService().getUserData();
+    setState(() {
+      userData = data;
+      isLoading = false;
+    });
+  }
+
+  Future<void> _logout() async {
+    await AuthService().signOut();
+    if (mounted) {
+      context.go('/welcome');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Dummy user data
-    final User user = User(
-      id: '1',
-      name: 'John Doe',
-      age: 25,
-      gender: 'Male',
-      weightGoal: 'Lose Weight',
-      workoutsCompleted: 12,
-      caloriesBurned: 2400,
-    );
+    if (isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Profile'),
+          backgroundColor: const Color(0xFF007BFF),
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (userData == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Profile'),
+          backgroundColor: const Color(0xFF007BFF),
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: Text('Failed to load user data'),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -75,7 +119,7 @@ class ProfilePage extends StatelessWidget {
                       const SizedBox(height: 16),
                       
                       Text(
-                        user.name,
+                        userData!['name'] ?? 'User',
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -86,7 +130,7 @@ class ProfilePage extends StatelessWidget {
                       const SizedBox(height: 8),
                       
                       Text(
-                        '${user.age} years old • ${user.gender}',
+                        '${userData!['age'] ?? 25} years old • ${userData!['gender'] ?? 'Male'}',
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.grey[600],
@@ -102,9 +146,13 @@ class ProfilePage extends StatelessWidget {
                 _buildInfoSection(
                   title: 'Personal Information',
                   children: [
-                    _buildInfoRow('Weight Goal', user.weightGoal),
-                    _buildInfoRow('Workouts Completed', user.workoutsCompleted.toString()),
-                    _buildInfoRow('Calories Burned', '${user.caloriesBurned} kcal'),
+                    _buildInfoRow('Email', AuthService().currentUserEmail ?? ''),
+                    _buildInfoRow('Weight Goal', userData!['weightGoal'] ?? 'Maintain'),
+                    _buildInfoRow('Activity Level', userData!['activityLevel'] ?? 'Moderate'),
+                    if (userData!['height'] != null)
+                      _buildInfoRow('Height', '${userData!['height'].toStringAsFixed(0)} cm'),
+                    if (userData!['weight'] != null)
+                      _buildInfoRow('Weight', '${userData!['weight'].toStringAsFixed(0)} kg'),
                   ],
                 ),
                 
@@ -114,8 +162,8 @@ class ProfilePage extends StatelessWidget {
                 _buildInfoSection(
                   title: 'Progress Stats',
                   children: [
-                    _buildStatCard('Workouts', user.workoutsCompleted.toString(), Icons.fitness_center, const Color(0xFF4CAF50)),
-                    _buildStatCard('Calories', user.caloriesBurned.toString(), Icons.local_fire_department, const Color(0xFFFF5722)),
+                    _buildStatCard('Workouts', (userData!['workoutsCompleted'] ?? 0).toString(), Icons.fitness_center, const Color(0xFF4CAF50)),
+                    _buildStatCard('Calories', (userData!['caloriesBurned'] ?? 0).toString(), Icons.local_fire_department, const Color(0xFFFF5722)),
                     _buildStatCard('Streak', '7 days', Icons.whatshot, const Color(0xFFFF9800)),
                   ],
                 ),
@@ -168,7 +216,7 @@ class ProfilePage extends StatelessWidget {
                                 TextButton(
                                   onPressed: () {
                                     Navigator.pop(context);
-                                    context.go('/welcome');
+                                    _logout();
                                   },
                                   child: const Text('Log Out'),
                                 ),

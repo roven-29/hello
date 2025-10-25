@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "432338359315",
-    "project_id": "flexmind-70327",
-    "storage_bucket": "flexmind-70327.firebasestorage.app"
+    "project_number": "480657660645",
+    "project_id": "flex-mind-fit",
+    "storage_bucket": "flex-mind-fit.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:432338359315:android:d5245f91b1cd4c17eb1be6",
+        "mobilesdk_app_id": "1:480657660645:android:6fadcd9371233c0b50d20c",
         "android_client_info": {
           "package_name": "com.example.app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAdeZUW4uGsvGUKcplBZUAn1YkGFIDKk10"
+          "current_key": "AIzaSyA-IrFwTaN7cOKVpd1AbFLJJzkxpM-Z6uU"
         }
       ],
       "services": {

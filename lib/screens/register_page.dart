@@ -42,10 +42,10 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    if (AuthService().userExists(_emailController.text)) {
+    if (_passwordController.text.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('User already exists with this email'),
+          content: Text('Password must be at least 6 characters long'),
           backgroundColor: Colors.red,
         ),
       );
@@ -56,18 +56,42 @@ class _RegisterPageState extends State<RegisterPage> {
       _isLoading = true;
     });
 
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
-
-    // Navigate to height selection page
-    if (mounted) {
-      context.go('/height-selection', extra: {
-        'email': _emailController.text,
-        'password': _passwordController.text,
+    // Create user with Firebase Auth
+    String? error = await AuthService().signUp(
+      _emailController.text,
+      _passwordController.text,
+      {
         'name': _nameController.text,
         'age': 25, // Default age, will be collected in the flow
         'gender': 'Male', // Default gender, will be collected in the flow
-      });
+        'weightGoal': 'Maintain', // Default goal, will be collected in the flow
+      },
+    );
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (error == null) {
+      // Navigate to height selection page to collect more user details
+      if (mounted) {
+        context.go('/height-selection', extra: {
+          'email': _emailController.text,
+          'password': _passwordController.text,
+          'name': _nameController.text,
+          'age': 25, // Default age, will be collected in the flow
+          'gender': 'Male', // Default gender, will be collected in the flow
+        });
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

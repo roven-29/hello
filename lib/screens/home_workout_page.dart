@@ -75,6 +75,10 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
         backgroundColor: const Color(0xFF007BFF),
         foregroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/home'),
+        ),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -239,6 +243,8 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -247,6 +253,8 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
                       fontSize: 14,
                       color: Colors.grey[600],
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
                   Row(

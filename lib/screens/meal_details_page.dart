@@ -34,6 +34,10 @@ class MealDetailsPage extends StatelessWidget {
         title: const Text('Meal Details'),
         backgroundColor: const Color(0xFF007BFF),
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/diet-plans'),
+        ),
       ),
       body: Container(
         decoration: const BoxDecoration(

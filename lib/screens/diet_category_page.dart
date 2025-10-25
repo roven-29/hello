@@ -18,6 +18,10 @@ class DietCategoryPage extends StatelessWidget {
         title: Text(category.name),
         backgroundColor: const Color(0xFF007BFF),
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/diet-plans'),
+        ),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -160,6 +164,8 @@ class DietCategoryPage extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF333333),
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(

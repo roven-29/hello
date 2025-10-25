@@ -15,6 +15,10 @@ class DietPlansPage extends StatelessWidget {
         title: const Text('Diet Plans'),
         backgroundColor: const Color(0xFF007BFF),
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/home'),
+        ),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -106,6 +110,8 @@ class DietPlansPage extends StatelessWidget {
                   color: Color(0xFF333333),
                 ),
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
               Text(

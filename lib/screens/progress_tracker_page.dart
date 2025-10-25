@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:go_router/go_router.dart';
 
 class ProgressTrackerPage extends StatelessWidget {
   const ProgressTrackerPage({super.key});
@@ -11,6 +12,10 @@ class ProgressTrackerPage extends StatelessWidget {
         title: const Text('Progress Tracker'),
         backgroundColor: const Color(0xFF007BFF),
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/home'),
+        ),
       ),
       body: Container(
         decoration: const BoxDecoration(

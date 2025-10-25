@@ -101,6 +101,10 @@ class _ExerciseTimerPageState extends State<ExerciseTimerPage> {
         title: Text(_exercise!.name),
         backgroundColor: const Color(0xFF007BFF),
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/workouts'),
+        ),
       ),
       // Confetti Animation
       body: Stack(

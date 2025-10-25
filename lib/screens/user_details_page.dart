@@ -61,9 +61,6 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
       _isLoading = true;
     });
 
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
-
     // Create user details map
     Map<String, dynamic> userDetails = {
       'name': _nameController.text,
@@ -71,18 +68,18 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
       'gender': _selectedGender,
       'height': double.parse(_heightController.text),
       'weight': double.parse(_weightController.text),
-      'goal': _selectedGoal,
+      'weightGoal': _selectedGoal,
       'activityLevel': _selectedActivity,
     };
 
-    // Sign up the user
-    bool success = AuthService().signUp(widget.email, widget.password, userDetails);
+    // Sign up the user with Firebase
+    String? error = await AuthService().signUp(widget.email, widget.password, userDetails);
 
     setState(() {
       _isLoading = false;
     });
 
-    if (success) {
+    if (error == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -95,8 +92,8 @@ class _UserDetailsPageState extends State<UserDetailsPage> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to create account. Please try again.'),
+          SnackBar(
+            content: Text(error),
             backgroundColor: Colors.red,
           ),
         );

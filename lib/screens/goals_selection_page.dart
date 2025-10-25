@@ -83,32 +83,28 @@ class _GoalsSelectionPageState extends State<GoalsSelectionPage> {
       _isLoading = true;
     });
 
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
-
-    // Create user details map
+    // Update user data in Firestore with complete information
     Map<String, dynamic> userDetails = {
       'name': widget.name,
       'age': widget.age,
       'gender': widget.gender,
       'height': widget.height,
       'weight': widget.weight,
-      'goal': _selectedGoal,
+      'weightGoal': _selectedGoal,
       'activityLevel': _selectedActivity,
     };
 
-    // Sign up the user
-    bool success = AuthService().signUp(widget.email, widget.password, userDetails);
+    String? error = await AuthService().updateUserData(userDetails);
 
     setState(() {
       _isLoading = false;
     });
 
-    if (success) {
+    if (error == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Account created successfully!'),
+            content: Text('Account setup completed successfully!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -117,8 +113,8 @@ class _GoalsSelectionPageState extends State<GoalsSelectionPage> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to create account. Please try again.'),
+          SnackBar(
+            content: Text('Failed to complete setup: $error'),
             backgroundColor: Colors.red,
           ),
         );

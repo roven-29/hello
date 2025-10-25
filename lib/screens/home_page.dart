@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../models/user.dart';
+import '../services/auth_service.dart';
 import 'profile_page.dart';
 import 'progress_tracker_page.dart';
 import 'settings_page.dart';
@@ -14,17 +14,22 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
-  
-  // Dummy user data
-  final User _user = User(
-    id: '1',
-    name: 'John Doe',
-    age: 25,
-    gender: 'Male',
-    weightGoal: 'Lose Weight',
-    workoutsCompleted: 12,
-    caloriesBurned: 2400,
-  );
+  Map<String, dynamic>? _userData;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final data = await AuthService().getUserData();
+    setState(() {
+      _userData = data;
+      _isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -233,7 +238,7 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Hi, ${_user.name}! 👋',
+                      'Hi, ${_userData?['name'] ?? 'User'}! 👋',
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -259,7 +264,7 @@ class _HomePageState extends State<HomePage> {
               Expanded(
                 child: _buildEnhancedStatCard(
                   'Workouts',
-                  _user.workoutsCompleted.toString(),
+                  (_userData?['workoutsCompleted'] ?? 0).toString(),
                   Icons.fitness_center,
                   const Color(0xFFFF5722),
                 ),
@@ -268,7 +273,7 @@ class _HomePageState extends State<HomePage> {
               Expanded(
                 child: _buildEnhancedStatCard(
                   'Calories',
-                  _user.caloriesBurned.toString(),
+                  (_userData?['caloriesBurned'] ?? 0).toString(),
                   Icons.local_fire_department,
                   const Color(0xFFFF9800),
                 ),
