@@ -121,8 +121,8 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
           child: RefreshIndicator(
             onRefresh: _loadProgressData,
             child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
@@ -324,9 +324,6 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
                 // Summary Stats
                 _buildSummaryStats(),
               ],
-            ),
-          ),
-        ),
             ),
           ),
         ),

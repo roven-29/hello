@@ -191,7 +191,7 @@ class WorkoutService {
           weeklyStats[weekday.toString()] = 0;
         }
         weeklyStats[weekday.toString()] = 
-            (weeklyStats[weekday.toString()] ?? 0) + data['caloriesBurned'] ?? 0;
+            (weeklyStats[weekday.toString()] ?? 0) + (data['caloriesBurned'] as num? ?? 0).toInt();
       }
 
       return weeklyStats;
