@@ -326,6 +326,7 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
               ],
             ),
           ),
+          ),
         ),
       ),
     );
