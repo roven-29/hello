@@ -20,6 +20,8 @@ import '../screens/weight_selection_page.dart';
 import '../screens/goals_selection_page.dart';
 import '../screens/home_workout_page.dart';
 import '../screens/yoga_page.dart';
+import '../screens/firebase_test_page.dart';
+import '../screens/workout_timer_page.dart';
 
 final GoRouter router = GoRouter(
   initialLocation: '/',
@@ -155,6 +157,17 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: '/yoga',
       builder: (context, state) => const YogaPage(),
+    ),
+    GoRoute(
+      path: '/firebase-test',
+      builder: (context, state) => const FirebaseTestPage(),
+    ),
+    GoRoute(
+      path: '/workout-timer/:workoutId',
+      builder: (context, state) {
+        final workoutId = state.pathParameters['workoutId']!;
+        return WorkoutTimerPage(workoutId: workoutId);
+      },
     ),
   ],
 );

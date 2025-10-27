@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../data/dummy_data.dart';
 import '../models/exercise.dart';
+import '../models/workout.dart';
 
 class WorkoutsPage extends StatelessWidget {
   const WorkoutsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final workoutCategories = DummyData.getWorkoutCategories();
+    final workouts = DummyData.getWorkouts();
     
     return Scaffold(
       appBar: AppBar(
@@ -19,6 +20,13 @@ class WorkoutsPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/home'),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.sports_gymnastics),
+            onPressed: () => context.go('/workouts'),
+            tooltip: 'Quick Workouts',
+          ),
+        ],
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -37,35 +45,52 @@ class WorkoutsPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Choose Your Workout',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF333333),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Select a workout category to get started',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '20-Minute Workouts',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF333333),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Complete fitness routines',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF007BFF).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.timer,
+                        color: Color(0xFF007BFF),
+                        size: 28,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 24),
                 Expanded(
-                  child: GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.8,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                    ),
-                    itemCount: workoutCategories.length,
+                  child: ListView.builder(
+                    itemCount: workouts.length,
                     itemBuilder: (context, index) {
-                      final category = workoutCategories[index];
-                      return _buildCategoryCard(context, category);
+                      final workout = workouts[index];
+                      return _buildWorkoutCard(context, workout);
                     },
                   ),
                 ),
@@ -77,12 +102,22 @@ class WorkoutsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryCard(BuildContext context, WorkoutCategory category) {
+  Widget _buildWorkoutCard(BuildContext context, Workout workout) {
+    final durationMinutes = (workout.totalDuration / 60).toStringAsFixed(0);
+    
     return GestureDetector(
-      onTap: () => context.go('/workout-category/${category.id}'),
+      onTap: () => context.go('/workout-timer/${workout.id}'),
       child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF007BFF),
+              const Color(0xFF0056B3),
+            ],
+          ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -95,49 +130,128 @@ class WorkoutsPage extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                category.icon,
-                style: const TextStyle(fontSize: 48),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      workout.icon,
+                      style: const TextStyle(fontSize: 32),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          workout.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          workout.description,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              Text(
-                category.name,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF333333),
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                category.description,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.timer, color: Colors.white, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            '$durationMinutes min',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.fitness_center, color: Colors.white, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${workout.exercises.length} exercises',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF007BFF).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(15),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  '${category.exercises.length} exercises',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF007BFF),
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Text(
+                      'START WORKOUT',
+                      style: TextStyle(
+                        color: Color(0xFF007BFF),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(
+                      Icons.play_arrow,
+                      color: Color(0xFF007BFF),
+                      size: 24,
+                    ),
+                  ],
                 ),
               ),
             ],

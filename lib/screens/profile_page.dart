@@ -20,11 +20,21 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _loadUserData() async {
-    final data = await AuthService().getUserData();
-    setState(() {
-      userData = data;
-      isLoading = false;
-    });
+    try {
+      final data = await AuthService().getUserData();
+      setState(() {
+        userData = data;
+        isLoading = false;
+      });
+      if (data == null) {
+        print('User data is null - this might indicate a Firestore connection issue');
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   Future<void> _logout() async {

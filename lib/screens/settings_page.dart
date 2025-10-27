@@ -213,6 +213,14 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: Icons.account_circle,
                   children: [
                     _buildListTile(
+                      title: 'Firebase Connection Test',
+                      subtitle: 'Test Firebase Auth & Firestore',
+                      icon: Icons.cloud_sync,
+                      onTap: () {
+                        context.go('/firebase-test');
+                      },
+                    ),
+                    _buildListTile(
                       title: 'Export Data',
                       subtitle: 'Download your fitness data',
                       icon: Icons.download,

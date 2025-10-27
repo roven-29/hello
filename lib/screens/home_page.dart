@@ -23,12 +23,35 @@ class _HomePageState extends State<HomePage> {
     _loadUserData();
   }
 
+  String _formatCalories(int calories) {
+    if (calories >= 1000) {
+      return '${(calories / 1000).toStringAsFixed(1)}K';
+    }
+    return calories.toString();
+  }
+
   Future<void> _loadUserData() async {
-    final data = await AuthService().getUserData();
-    setState(() {
-      _userData = data;
-      _isLoading = false;
-    });
+    try {
+      print('Loading user data from Firestore...');
+      final data = await AuthService().getUserData();
+      
+      if (data == null) {
+        print('⚠️ User data is null after loading. Check console logs for Firebase errors.');
+      } else {
+        print('✓ User data loaded successfully: ${data.keys}');
+      }
+      
+      setState(() {
+        _userData = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('✗ Error loading user data: $e');
+      setState(() {
+        _isLoading = false;
+        _userData = null;
+      });
+    }
   }
 
   @override
@@ -273,7 +296,7 @@ class _HomePageState extends State<HomePage> {
               Expanded(
                 child: _buildEnhancedStatCard(
                   'Calories',
-                  (_userData?['caloriesBurned'] ?? 0).toString(),
+                  _formatCalories(_userData?['caloriesBurned'] ?? 0),
                   Icons.local_fire_department,
                   const Color(0xFFFF9800),
                 ),
@@ -354,7 +377,7 @@ class _HomePageState extends State<HomePage> {
           subtitle: 'Build muscle and power',
           icon: '💪',
           color: const Color(0xFFFF5722),
-          onTap: () => context.go('/workouts'),
+          onTap: () => context.go('/workout-timer/strength_training'),
         ),
         const SizedBox(height: 12),
         _buildMainCard(
@@ -362,7 +385,7 @@ class _HomePageState extends State<HomePage> {
           subtitle: 'Burn calories and improve endurance',
           icon: '❤️',
           color: const Color(0xFFE91E63),
-          onTap: () => context.go('/workouts'),
+          onTap: () => context.go('/workout-timer/cardio_workouts'),
         ),
         const SizedBox(height: 12),
         _buildMainCard(
@@ -370,7 +393,7 @@ class _HomePageState extends State<HomePage> {
           subtitle: 'No equipment needed',
           icon: '🏠',
           color: const Color(0xFF9C27B0),
-          onTap: () => context.go('/home-workout'),
+          onTap: () => context.go('/workout-timer/home_workouts'),
         ),
         const SizedBox(height: 12),
         _buildMainCard(
@@ -378,7 +401,7 @@ class _HomePageState extends State<HomePage> {
           subtitle: 'Improve flexibility and balance',
           icon: '🧘',
           color: const Color(0xFF4CAF50),
-          onTap: () => context.go('/yoga'),
+          onTap: () => context.go('/workout-timer/yoga_exercises'),
         ),
       ],
     );

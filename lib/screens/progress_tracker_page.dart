@@ -1,12 +1,101 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:go_router/go_router.dart';
+import '../services/auth_service.dart';
+import '../services/workout_service.dart';
+import '../models/workout_session.dart';
 
-class ProgressTrackerPage extends StatelessWidget {
+class ProgressTrackerPage extends StatefulWidget {
   const ProgressTrackerPage({super.key});
 
   @override
+  State<ProgressTrackerPage> createState() => _ProgressTrackerPageState();
+}
+
+class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
+  Map<String, dynamic>? _userData;
+  List<WorkoutSession> _workoutHistory = [];
+  Map<String, int> _weeklyStats = {};
+  Map<String, dynamic> _streakInfo = {};
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProgressData();
+  }
+
+  Future<void> _loadProgressData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Load user data
+      final userData = await AuthService().getUserData();
+      
+      // Load workout history
+      final history = await WorkoutService().getWorkoutHistory();
+      
+      // Load weekly stats
+      final weeklyStats = await WorkoutService().getWeeklyStats();
+      
+      // Load streak info
+      final streakInfo = await WorkoutService().getStreakInfo();
+      
+      setState(() {
+        _userData = userData;
+        _workoutHistory = history;
+        _weeklyStats = weeklyStats;
+        _streakInfo = streakInfo;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading progress data: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  List<FlSpot> _getWeeklyCaloriesSpots() {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return days.asMap().entries.map((entry) {
+      final dayKey = (entry.key + 1).toString();
+      final calories = _weeklyStats[dayKey] ?? 0;
+      return FlSpot(entry.key.toDouble(), calories.toDouble());
+    }).toList();
+  }
+
+  List<BarChartGroupData> _getWeeklyWorkoutBars() {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return days.asMap().entries.map((entry) {
+      final dayKey = (entry.key + 1).toString();
+      final calories = _weeklyStats[dayKey] ?? 0;
+      return BarChartGroupData(
+        x: entry.key,
+        barRods: [
+          BarChartRodData(
+            toY: calories.toDouble(),
+            color: const Color(0xFF4CAF50),
+          ),
+        ],
+      );
+    }).toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Progress Tracker'),
+          backgroundColor: const Color(0xFF007BFF),
+          foregroundColor: Colors.white,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go('/home'),
+          ),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Progress Tracker'),
@@ -29,7 +118,9 @@ class ProgressTrackerPage extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
+          child: RefreshIndicator(
+            onRefresh: _loadProgressData,
+            child: SingleChildScrollView(
             padding: const EdgeInsets.all(20.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,7 +155,15 @@ class ProgressTrackerPage extends StatelessWidget {
                         gridData: FlGridData(show: false),
                         titlesData: FlTitlesData(
                           leftTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              getTitlesWidget: (value, meta) {
+                                return Text(
+                                  value.toInt().toString(),
+                                  style: const TextStyle(fontSize: 12),
+                                );
+                              },
+                            ),
                           ),
                           topTitles: AxisTitles(
                             sideTitles: SideTitles(showTitles: false),
@@ -88,15 +187,7 @@ class ProgressTrackerPage extends StatelessWidget {
                         borderData: FlBorderData(show: false),
                         lineBarsData: [
                           LineChartBarData(
-                            spots: const [
-                              FlSpot(0, 1),
-                              FlSpot(1, 2),
-                              FlSpot(2, 1.5),
-                              FlSpot(3, 3),
-                              FlSpot(4, 2.5),
-                              FlSpot(5, 4),
-                              FlSpot(6, 3.5),
-                            ],
+                            spots: _getWeeklyCaloriesSpots(),
                             isCurved: true,
                             color: const Color(0xFF007BFF),
                             barWidth: 3,
@@ -123,7 +214,7 @@ class ProgressTrackerPage extends StatelessWidget {
                     child: BarChart(
                       BarChartData(
                         alignment: BarChartAlignment.spaceAround,
-                        maxY: 500,
+                        maxY: _weeklyStats.values.isEmpty ? 500 : (_weeklyStats.values.reduce((a, b) => a > b ? a : b) * 1.2).toDouble(),
                         titlesData: FlTitlesData(
                           leftTitles: AxisTitles(
                             sideTitles: SideTitles(
@@ -156,15 +247,7 @@ class ProgressTrackerPage extends StatelessWidget {
                           ),
                         ),
                         borderData: FlBorderData(show: false),
-                        barGroups: [
-                          BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: 300, color: const Color(0xFF4CAF50))]),
-                          BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: 450, color: const Color(0xFF4CAF50))]),
-                          BarChartGroupData(x: 2, barRods: [BarChartRodData(toY: 200, color: const Color(0xFF4CAF50))]),
-                          BarChartGroupData(x: 3, barRods: [BarChartRodData(toY: 500, color: const Color(0xFF4CAF50))]),
-                          BarChartGroupData(x: 4, barRods: [BarChartRodData(toY: 350, color: const Color(0xFF4CAF50))]),
-                          BarChartGroupData(x: 5, barRods: [BarChartRodData(toY: 480, color: const Color(0xFF4CAF50))]),
-                          BarChartGroupData(x: 6, barRods: [BarChartRodData(toY: 420, color: const Color(0xFF4CAF50))]),
-                        ],
+                        barGroups: _getWeeklyWorkoutBars(),
                       ),
                     ),
                   ),
@@ -244,6 +327,9 @@ class ProgressTrackerPage extends StatelessWidget {
             ),
           ),
         ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -316,29 +402,49 @@ class ProgressTrackerPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildSummaryCard('Workouts', '5', Icons.fitness_center, const Color(0xFF007BFF)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildSummaryCard('Calories', '2,400', Icons.local_fire_department, const Color(0xFFFF5722)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildSummaryCard('Weight Loss', '1.2kg', Icons.trending_down, const Color(0xFF4CAF50)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildSummaryCard('Streak', '7 days', Icons.whatshot, const Color(0xFFFF9800)),
-              ),
-            ],
-          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildSummaryCard(
+                                  'Workouts', 
+                                  '${_userData?['workoutsCompleted'] ?? 0}', 
+                                  Icons.fitness_center, 
+                                  const Color(0xFF007BFF)
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildSummaryCard(
+                                  'Calories', 
+                                  '${(_userData?['caloriesBurned'] ?? 0).toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}', 
+                                  Icons.local_fire_department, 
+                                  const Color(0xFFFF5722)
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildSummaryCard(
+                                  'Total Workouts', 
+                                  '${_workoutHistory.length}', 
+                                  Icons.check_circle, 
+                                  const Color(0xFF4CAF50)
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildSummaryCard(
+                                  'Streak', 
+                                  '${_streakInfo['currentStreak'] ?? 0} days', 
+                                  Icons.whatshot, 
+                                  const Color(0xFFFF9800)
+                                ),
+                              ),
+                            ],
+                          ),
         ],
       ),
     );

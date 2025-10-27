@@ -85,6 +85,7 @@ class _GoalsSelectionPageState extends State<GoalsSelectionPage> {
 
     // Update user data in Firestore with complete information
     Map<String, dynamic> userDetails = {
+      'email': widget.email, // Include email to ensure it's preserved
       'name': widget.name,
       'age': widget.age,
       'gender': widget.gender,
@@ -92,6 +93,8 @@ class _GoalsSelectionPageState extends State<GoalsSelectionPage> {
       'weight': widget.weight,
       'weightGoal': _selectedGoal,
       'activityLevel': _selectedActivity,
+      'workoutsCompleted': 0, // Ensure these fields are set
+      'caloriesBurned': 0, // Ensure these fields are set
     };
 
     String? error = await AuthService().updateUserData(userDetails);
