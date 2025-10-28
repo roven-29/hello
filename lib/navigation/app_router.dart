@@ -218,7 +218,11 @@ final GoRouter router = GoRouter(
     ),
     GoRoute(
       path: '/home-workout',
-      builder: (context, state) => const HomeWorkoutPage(),
+      builder: (context, state) {
+        final totalDays = int.tryParse(state.uri.queryParameters['totalDays'] ?? '7') ?? 7;
+        final currentDay = int.tryParse(state.uri.queryParameters['currentDay'] ?? '1') ?? 1;
+        return HomeWorkoutPage(totalDays: totalDays, currentDay: currentDay);
+      },
     ),
     GoRoute(path: '/yoga', builder: (context, state) => const YogaPage()),
     GoRoute(
