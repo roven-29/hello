@@ -6,6 +6,9 @@ import 'package:confetti/confetti.dart';
 import '../data/dummy_data.dart';
 import '../models/workout.dart';
 import '../services/workout_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/auth_service.dart';
+// route to plan page via router
 
 class WorkoutTimerPage extends StatefulWidget {
   final String workoutId;
@@ -16,7 +19,8 @@ class WorkoutTimerPage extends StatefulWidget {
   State<WorkoutTimerPage> createState() => _WorkoutTimerPageState();
 }
 
-class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProviderStateMixin {
+class _WorkoutTimerPageState extends State<WorkoutTimerPage>
+    with TickerProviderStateMixin {
   Timer? _timer;
   late Workout _workout;
   int _currentExerciseIndex = 0;
@@ -26,13 +30,26 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
   bool _isPaused = false;
   late ConfettiController _confettiController;
   late AnimationController _progressController;
-  
+  // live calorie tracking while workout is ongoing
+  double _pendingCaloriesToFlush = 0.0; // not yet written to Firestore
+  double _sessionCalories = 0.0; // calories accumulated for UI during this session
+  DateTime? _lastCaloriesFlush;
+  final Duration _caloriesFlushInterval = const Duration(seconds: 15);
+  final Map<String, double> _calPerMinMap = {
+    'strength_training': 8.0,
+    'cardio_workouts': 10.0,
+    'home_workouts': 7.0,
+    'yoga_exercises': 3.0,
+  };
+
   @override
   void initState() {
     super.initState();
     _workout = DummyData.getWorkoutById(widget.workoutId)!;
     _timeLeft = _workout.exercises[0].duration;
-    _confettiController = ConfettiController(duration: const Duration(seconds: 5));
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 5),
+    );
     _progressController = AnimationController(
       vsync: this,
       duration: Duration(seconds: _timeLeft),
@@ -49,7 +66,7 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
 
   void _startTimer() {
     if (_isRunning) return;
-    
+
     setState(() {
       _isRunning = true;
       _isPaused = false;
@@ -62,8 +79,23 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         if (_timeLeft > 0) {
+          // accumulate calories per second for non-rest exercises
+          final currentExercise = _workout.exercises[_currentExerciseIndex];
+          if (!currentExercise.isRest) {
+            final calPerMin = _calPerMinMap[widget.workoutId] ?? 8.0;
+            final calThisSecond = calPerMin / 60.0;
+            _sessionCalories += calThisSecond;
+            _pendingCaloriesToFlush += calThisSecond;
+            // Flush occasionally
+            if (_shouldFlushCalories()) {
+              _flushPendingCalories();
+            }
+          }
+
           _timeLeft--;
-          _progressController.value = 1 - (_timeLeft / _workout.exercises[_currentExerciseIndex].duration);
+          _progressController.value =
+              1 -
+              (_timeLeft / _workout.exercises[_currentExerciseIndex].duration);
         } else {
           _progressController.reset();
           _nextExercise();
@@ -127,14 +159,17 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
       _isPaused = false;
     });
     _confettiController.play();
-    
+
     // Save workout to Firebase
+    // Ensure pending calories are flushed first
+    await _flushPendingCalories(force: true);
+
     final error = await WorkoutService().recordWorkout(
       workoutId: widget.workoutId,
       workoutName: _workout.name,
       durationSeconds: _workout.totalDuration,
     );
-    
+
     if (error != null) {
       print('Failed to save workout: $error');
     }
@@ -163,6 +198,8 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
     final currentExercise = _workout.exercises[_currentExerciseIndex];
     final nextExercise = _getNextExercise();
 
+    final displayCalories = _sessionCalories;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -178,7 +215,7 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
               ),
             ),
           ),
-          
+
           // Main content
           SafeArea(
             child: Padding(
@@ -204,14 +241,71 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.info_outline, color: Colors.white),
+                        icon: const Icon(
+                          Icons.info_outline,
+                          color: Colors.white,
+                        ),
                         onPressed: () => _showWorkoutInfo(),
                       ),
+                      if ([
+                        'strength_training',
+                        'cardio_workouts',
+                        'home_workouts',
+                      ].contains(widget.workoutId))
+                        IconButton(
+                          icon: const Icon(
+                            Icons.calendar_month,
+                            color: Colors.white,
+                          ),
+                          tooltip: 'Open plan',
+                          onPressed: () async {
+                            final planType = widget.workoutId;
+                            final choice = await WorkoutService()
+                                .getUserPlanChoice(planType);
+                            if (choice != null) {
+                              context.push(
+                                '/plan',
+                                extra: {'planType': planType},
+                              );
+                            } else {
+                              final selected = await showDialog<int?>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Choose plan length'),
+                                  content: const Text(
+                                    'Would you like a 7-day or 30-day plan?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, 7),
+                                      child: const Text('7-day'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, 30),
+                                      child: const Text('30-day'),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (selected != null) {
+                                await WorkoutService().setUserPlanChoice(
+                                  planType,
+                                  selected,
+                                );
+                                context.push(
+                                  '/plan',
+                                  extra: {'planType': planType},
+                                );
+                              }
+                            }
+                          },
+                        ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 20),
-                  
+
                   // Exercise name
                   Text(
                     currentExercise.name,
@@ -222,20 +316,24 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  
+
+                  const SizedBox(height: 6),
+                  // Live calories display
+                  Text(
+                    'Calories: ${displayCalories.toStringAsFixed(1)} kcal',
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+
                   const SizedBox(height: 10),
-                  
+
                   // Exercise number
                   Text(
                     'Exercise ${_currentExerciseIndex + 1} of ${_workout.exercises.length}',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
-                    ),
+                    style: const TextStyle(color: Colors.white70, fontSize: 16),
                   ),
-                  
+
                   const SizedBox(height: 40),
-                  
+
                   // Circular timer
                   Container(
                     width: 250,
@@ -286,9 +384,9 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
                       ],
                     ),
                   ),
-                  
+
                   const SizedBox(height: 30),
-                  
+
                   // Instructions
                   Container(
                     padding: const EdgeInsets.all(20),
@@ -306,9 +404,9 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
                       ),
                     ),
                   ),
-                  
+
                   const Spacer(),
-                  
+
                   // Next up section
                   if (nextExercise != null) ...[
                     Text(
@@ -362,7 +460,7 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
                     ),
                     const SizedBox(height: 20),
                   ],
-                  
+
                   // Controls
                   if (!_isCompleted) ...[
                     // Back and forward buttons
@@ -371,7 +469,9 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
                       children: [
                         _buildControlButton(
                           icon: Icons.skip_previous,
-                          onPressed: _currentExerciseIndex > 0 ? _previousExercise : null,
+                          onPressed: _currentExerciseIndex > 0
+                              ? _previousExercise
+                              : null,
                         ),
                         _buildControlButton(
                           icon: _isPaused ? Icons.play_arrow : Icons.pause,
@@ -451,7 +551,9 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
                                   ),
                                   child: const Text(
                                     'DONE',
@@ -472,7 +574,7 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
               ),
             ),
           ),
-          
+
           // Confetti
           Align(
             alignment: Alignment.topCenter,
@@ -490,7 +592,7 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
               ],
             ),
           ),
-          
+
           // Progress bar at top
           Positioned(
             top: 0,
@@ -502,9 +604,7 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
               child: FractionallySizedBox(
                 alignment: Alignment.centerLeft,
                 widthFactor: _getProgress(),
-                child: Container(
-                  color: Colors.white,
-                ),
+                child: Container(color: Colors.white),
               ),
             ),
           ),
@@ -513,7 +613,65 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
     );
   }
 
-  Widget _buildControlButton({required IconData icon, required VoidCallback? onPressed, double size = 48}) {
+  bool _shouldFlushCalories() {
+    if (_pendingCaloriesToFlush >= 1.0) return true;
+    if (_lastCaloriesFlush == null) return true;
+    return DateTime.now().difference(_lastCaloriesFlush!) >= _caloriesFlushInterval;
+  }
+
+  Future<void> _flushPendingCalories({bool force = false}) async {
+    if (!force && _pendingCaloriesToFlush <= 0) return;
+    final toFlush = _pendingCaloriesToFlush;
+    if (toFlush <= 0) return;
+
+    final uid = AuthService().currentUserId;
+    if (uid == null) return;
+
+    try {
+      // map workoutId to a collection name similar to strength_workout used elsewhere
+      String collectionName;
+      switch (widget.workoutId) {
+        case 'strength_training':
+          collectionName = 'strength_workout';
+          break;
+        case 'cardio_workouts':
+          collectionName = 'cardio_workout';
+          break;
+        case 'home_workouts':
+          collectionName = 'home_workout';
+          break;
+        default:
+          collectionName = widget.workoutId;
+      }
+
+      final docRef = FirebaseFirestore.instance
+          .collection('user_progress')
+          .doc(uid)
+          .collection(collectionName)
+          .doc('current_progress');
+
+      final snapshot = await docRef.get();
+      final current = (snapshot.exists && snapshot.data() != null)
+          ? (snapshot.data()!['calories_burned'] as num? ?? 0)
+          : 0;
+
+      await docRef.set({
+        'calories_burned': current + toFlush,
+        'last_updated': DateTime.now(),
+      }, SetOptions(merge: true));
+
+      _pendingCaloriesToFlush = 0.0;
+      _lastCaloriesFlush = DateTime.now();
+    } catch (e) {
+      print('Error flushing calories: $e');
+    }
+  }
+
+  Widget _buildControlButton({
+    required IconData icon,
+    required VoidCallback? onPressed,
+    double size = 48,
+  }) {
     return IconButton(
       onPressed: onPressed,
       icon: Icon(icon),
@@ -534,7 +692,9 @@ class _WorkoutTimerPageState extends State<WorkoutTimerPage> with TickerProvider
           children: [
             Text(_workout.description),
             const SizedBox(height: 16),
-            Text('Total Duration: ${(_workout.totalDuration / 60).toStringAsFixed(0)} minutes'),
+            Text(
+              'Total Duration: ${(_workout.totalDuration / 60).toStringAsFixed(0)} minutes',
+            ),
             const SizedBox(height: 8),
             Text('Exercises: ${_workout.exercises.length}'),
           ],
@@ -574,7 +734,7 @@ class CircularProgressPainter extends CustomPainter {
     final radius = size.width / 2 - 4;
 
     canvas.drawCircle(center, radius, paint);
-    
+
     if (progress > 0) {
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
@@ -589,4 +749,3 @@ class CircularProgressPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
-

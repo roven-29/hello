@@ -1,7 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../services/auth_service.dart';
 
 class AgeSelectionPage extends StatefulWidget {
-  const AgeSelectionPage({super.key});
+  final String email;
+  final String password;
+  final String name;
+  final String gender;
+
+  const AgeSelectionPage({
+    super.key,
+    required this.email,
+    required this.password,
+    required this.name,
+    required this.gender,
+  });
 
   @override
   State<AgeSelectionPage> createState() => _AgeSelectionPageState();
@@ -35,7 +48,7 @@ class _AgeSelectionPageState extends State<AgeSelectionPage> {
                 Row(
                   children: [
                     IconButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => context.pop(),
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
                     ),
                     const Expanded(
@@ -168,8 +181,31 @@ class _AgeSelectionPageState extends State<AgeSelectionPage> {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/metrics');
+                    onPressed: () async {
+                      // Update age in Firebase
+                      String? error = await AuthService().updateUserData({
+                        'age': selectedAge,
+                      });
+                      
+                      if (error == null) {
+                        // Navigate to height selection page
+                        context.go('/height-selection', extra: {
+                          'email': widget.email,
+                          'password': widget.password,
+                          'name': widget.name,
+                          'age': selectedAge,
+                          'gender': widget.gender,
+                        });
+                      } else {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: $error'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,

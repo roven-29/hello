@@ -24,6 +24,35 @@ class WorkoutService {
     return baseCalories * durationMinutes;
   }
 
+  // Public helper to calculate calories for a duration in seconds
+  int calculateCaloriesForDuration(String workoutId, int durationSeconds) {
+    final minutes = (durationSeconds / 60).ceil();
+    return _calculateCaloriesBurned(workoutId, minutes);
+  }
+
+  // Generic Firestore write helper with retries
+  Future<T> _writeWithRetry<T>(
+    Future<T> Function() fn, {
+    int retries = 3,
+    Duration initialDelay = const Duration(seconds: 1),
+  }) async {
+    int attempt = 0;
+    var delay = initialDelay;
+    while (true) {
+      try {
+        return await fn();
+      } catch (e) {
+        attempt++;
+        if (attempt >= retries) rethrow;
+        print(
+          'Write failed (attempt $attempt), retrying in ${delay.inSeconds}s... Error: $e',
+        );
+        await Future.delayed(delay);
+        delay *= 2;
+      }
+    }
+  }
+
   // Record a completed workout
   Future<String?> recordWorkout({
     required String workoutId,
@@ -35,11 +64,14 @@ class WorkoutService {
 
     try {
       final durationMinutes = (durationSeconds / 60).ceil();
-      final caloriesBurned = _calculateCaloriesBurned(workoutId, durationMinutes);
-      
+      final caloriesBurned = _calculateCaloriesBurned(
+        workoutId,
+        durationMinutes,
+      );
+
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      
+
       final session = WorkoutSession(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         userId: userId,
@@ -52,10 +84,13 @@ class WorkoutService {
       );
 
       // Save workout session
-      await _firestore
-          .collection('workout_sessions')
-          .doc(session.id)
-          .set(session.toMap());
+      await _writeWithRetry(() async {
+        await _firestore
+            .collection('workout_sessions')
+            .doc(session.id)
+            .set(session.toMap());
+        return null;
+      });
 
       // Update user's total stats
       await _updateUserStats(1, caloriesBurned);
@@ -78,16 +113,19 @@ class WorkoutService {
 
     try {
       final userDoc = await _firestore.collection('users').doc(userId).get();
-      
+
       if (userDoc.exists) {
         final currentData = userDoc.data() as Map<String, dynamic>;
         final currentWorkouts = currentData['workoutsCompleted'] ?? 0;
         final currentCalories = currentData['caloriesBurned'] ?? 0;
-        
-        await _firestore.collection('users').doc(userId).update({
-          'workoutsCompleted': currentWorkouts + workoutCount,
-          'caloriesBurned': currentCalories + calories,
-          'lastWorkoutDate': DateTime.now().toIso8601String(),
+
+        await _writeWithRetry(() async {
+          await _firestore.collection('users').doc(userId).update({
+            'workoutsCompleted': currentWorkouts + workoutCount,
+            'caloriesBurned': currentCalories + calories,
+            'lastWorkoutDate': DateTime.now().toIso8601String(),
+          });
+          return null;
         });
       }
     } catch (e) {
@@ -102,37 +140,40 @@ class WorkoutService {
 
     try {
       final userDoc = await _firestore.collection('users').doc(userId).get();
-      
+
       if (userDoc.exists) {
         final currentData = userDoc.data() as Map<String, dynamic>;
         final currentStreak = currentData['currentStreak'] ?? 0;
         final lastWorkoutDate = currentData['lastWorkoutDate'];
-        
+
         int newStreak = 1;
-        
+
         if (lastWorkoutDate != null) {
           final lastDate = DateTime.parse(lastWorkoutDate);
           final today = DateTime.now();
           final yesterday = today.subtract(const Duration(days: 1));
-          
+
           // Check if last workout was yesterday (continuous streak)
           if (lastDate.year == yesterday.year &&
               lastDate.month == yesterday.month &&
               lastDate.day == yesterday.day) {
             newStreak = currentStreak + 1;
           } else if (lastDate.year == today.year &&
-                     lastDate.month == today.month &&
-                     lastDate.day == today.day) {
+              lastDate.month == today.month &&
+              lastDate.day == today.day) {
             // Already worked out today, keep current streak
             return;
           }
         }
-        
-        await _firestore.collection('users').doc(userId).update({
-          'currentStreak': newStreak,
-          'bestStreak': (currentData['bestStreak'] ?? 0) > newStreak 
-              ? currentData['bestStreak'] 
-              : newStreak,
+
+        await _writeWithRetry(() async {
+          await _firestore.collection('users').doc(userId).update({
+            'currentStreak': newStreak,
+            'bestStreak': (currentData['bestStreak'] ?? 0) > newStreak
+                ? currentData['bestStreak']
+                : newStreak,
+          });
+          return null;
         });
       }
     } catch (e) {
@@ -147,7 +188,7 @@ class WorkoutService {
 
     try {
       final cutoffDate = DateTime.now().subtract(Duration(days: days));
-      
+
       final querySnapshot = await _firestore
           .collection('workout_sessions')
           .where('userId', isEqualTo: userId)
@@ -172,7 +213,11 @@ class WorkoutService {
     try {
       final now = DateTime.now();
       final weekStart = now.subtract(Duration(days: now.weekday - 1));
-      final weekStartDate = DateTime(weekStart.year, weekStart.month, weekStart.day);
+      final weekStartDate = DateTime(
+        weekStart.year,
+        weekStart.month,
+        weekStart.day,
+      );
 
       final querySnapshot = await _firestore
           .collection('workout_sessions')
@@ -181,17 +226,18 @@ class WorkoutService {
           .get();
 
       final Map<String, int> weeklyStats = {};
-      
+
       for (var doc in querySnapshot.docs) {
         final data = doc.data();
         final date = DateTime.parse(data['date']);
         final weekday = date.weekday; // 1 = Monday, 7 = Sunday
-        
+
         if (!weeklyStats.containsKey(weekday.toString())) {
           weeklyStats[weekday.toString()] = 0;
         }
-        weeklyStats[weekday.toString()] = 
-            (weeklyStats[weekday.toString()] ?? 0) + (data['caloriesBurned'] as num? ?? 0).toInt();
+        weeklyStats[weekday.toString()] =
+            (weeklyStats[weekday.toString()] ?? 0) +
+            (data['caloriesBurned'] as num? ?? 0).toInt();
       }
 
       return weeklyStats;
@@ -208,7 +254,7 @@ class WorkoutService {
 
     try {
       final userDoc = await _firestore.collection('users').doc(userId).get();
-      
+
       if (userDoc.exists) {
         final data = userDoc.data() as Map<String, dynamic>;
         return {
@@ -223,5 +269,171 @@ class WorkoutService {
       return {};
     }
   }
-}
 
+  // Set user's chosen plan (e.g., 'home_workouts' -> 7 or 30)
+  Future<void> setUserPlanChoice(String planType, int lengthDays) async {
+    final userId = _auth.currentUserId;
+    if (userId == null) return;
+
+    try {
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        final currentData = userDoc.data() as Map<String, dynamic>;
+        final planChoices = currentData['planChoices'] ?? {};
+        planChoices[planType] = {
+          'lengthDays': lengthDays,
+          'chosenAt': DateTime.now().toIso8601String(),
+        };
+        await _writeWithRetry(() async {
+          await _firestore.collection('users').doc(userId).update({
+            'planChoices': planChoices,
+          });
+          return null;
+        });
+      } else {
+        await _writeWithRetry(() async {
+          await _firestore.collection('users').doc(userId).set({
+            'planChoices': {
+              planType: {
+                'lengthDays': lengthDays,
+                'chosenAt': DateTime.now().toIso8601String(),
+              },
+            },
+          }, SetOptions(merge: true));
+          return null;
+        });
+      }
+    } catch (e) {
+      print('Error setting user plan choice: $e');
+    }
+  }
+
+  // Get user's chosen plan length for a planType (returns null if not set)
+  Future<int?> getUserPlanChoice(String planType) async {
+    final userId = _auth.currentUserId;
+    if (userId == null) return null;
+
+    try {
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      if (!userDoc.exists) return null;
+      final data = userDoc.data() as Map<String, dynamic>;
+      final planChoices = data['planChoices'] as Map<String, dynamic>?;
+      if (planChoices == null) return null;
+      final choice = planChoices[planType] as Map<String, dynamic>?;
+      if (choice == null) return null;
+      return (choice['lengthDays'] as num?)?.toInt();
+    } catch (e) {
+      print('Error getting user plan choice: $e');
+      return null;
+    }
+  }
+
+  // Get user's plan progress map for a planType
+  Future<Map<String, dynamic>> getUserPlanProgress(String planType) async {
+    final userId = _auth.currentUserId;
+    if (userId == null) return {};
+
+    try {
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      if (!userDoc.exists) return {};
+      final data = userDoc.data() as Map<String, dynamic>;
+      final planProgress = data['planProgress'] ?? {};
+      return planProgress[planType] ?? {};
+    } catch (e) {
+      print('Error getting user plan progress: $e');
+      return {};
+    }
+  }
+
+  // Get recent plan progress entries for the current user and optional planType
+  Future<List<Map<String, dynamic>>> getPlanProgressEntries({
+    String? planType,
+    int limit = 30,
+  }) async {
+    final userId = _auth.currentUserId;
+    if (userId == null) return [];
+
+    try {
+      Query query = _firestore
+          .collection('plan_progress')
+          .where('userId', isEqualTo: userId);
+      if (planType != null)
+        query = query.where('planType', isEqualTo: planType);
+      final snapshot = await query
+          .orderBy('timestamp', descending: true)
+          .limit(limit)
+          .get();
+
+      return snapshot.docs
+          .map((d) => d.data() as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      print('Error fetching plan progress entries: $e');
+      return [];
+    }
+  }
+
+  // Record completion of a plan day (e.g., day 3 of a 30-day home workout plan)
+  Future<String?> recordPlanDay({
+    required String planType,
+    required int dayIndex,
+    required String dayName,
+    required int durationSeconds,
+    List<Map<String, dynamic>>? exerciseDetails,
+  }) async {
+    final userId = _auth.currentUserId;
+    if (userId == null) return 'Not signed in';
+
+    try {
+      final durationMinutes = (durationSeconds / 60).ceil();
+      final caloriesBurned = _calculateCaloriesBurned(
+        planType,
+        durationMinutes,
+      );
+      final now = DateTime.now();
+
+      await _writeWithRetry(() async {
+        final docRef = _firestore.collection('plan_progress').doc();
+        await docRef.set({
+          'id': docRef.id,
+          'userId': userId,
+          'planType': planType,
+          'dayIndex': dayIndex,
+          'dayName': dayName,
+          'durationSeconds': durationSeconds,
+          'caloriesBurned': caloriesBurned,
+          'exerciseDetails': exerciseDetails ?? [],
+          'timestamp': now.toIso8601String(),
+          'date': DateTime(now.year, now.month, now.day).toIso8601String(),
+        });
+        return null;
+      });
+
+      // Also update a simple progress map on the user's document
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        final currentData = userDoc.data() as Map<String, dynamic>;
+        final currentPlans = currentData['planProgress'] ?? {};
+        currentPlans[planType] = {
+          'currentDay': dayIndex,
+          'lastCompletedDate': now.toIso8601String(),
+        };
+
+        await _writeWithRetry(() async {
+          await _firestore.collection('users').doc(userId).update({
+            'planProgress': currentPlans,
+          });
+          return null;
+        });
+      }
+
+      // Update global workout stats as well
+      await _updateUserStats(1, caloriesBurned);
+
+      return null;
+    } catch (e) {
+      print('Error recording plan day: $e');
+      return 'Error recording plan day: $e';
+    }
+  }
+}

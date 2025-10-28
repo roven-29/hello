@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:go_router/go_router.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../services/auth_service.dart';
 import 'profile_page.dart';
 import 'progress_tracker_page.dart';
@@ -16,11 +18,67 @@ class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  String? _currentlyPlaying;
+  Timer? _breathTimer;
+  Duration _musicPosition = Duration.zero;
+  Duration _musicDuration = Duration.zero;
+  PlayerState _playerState = PlayerState.stopped;
+  int _currentTrackIndex = -1;
+  final List<Map<String, String>> _soothingTracks = const [
+    {
+      'title': 'Peaceful Rain',
+      'artist': 'Nature Sounds',
+      'description': 'Gentle rain for deep relaxation',
+      'url': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    },
+    {
+      'title': 'Ocean Waves',
+      'artist': 'Calm Ambience',
+      'description': 'Soothing ocean waves for meditation',
+      'url': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+    },
+    {
+      'title': 'Forest Stream',
+      'artist': 'Nature Therapy',
+      'description': 'Flowing water in a peaceful forest',
+      'url': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+    },
+    {
+      'title': 'Zen Meditation',
+      'artist': 'Mindfulness Music',
+      'description': 'Calming tones for meditation',
+      'url': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
+    },
+  ];
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    // Setup audio listeners
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (!mounted) return;
+      setState(() => _playerState = state);
+    });
+    _audioPlayer.onDurationChanged.listen((d) {
+      if (!mounted) return;
+      setState(() => _musicDuration = d);
+    });
+    _audioPlayer.onPositionChanged.listen((p) {
+      if (!mounted) return;
+      setState(() => _musicPosition = p);
+    });
+    _audioPlayer.onPlayerComplete.listen((_) {
+      _nextTrack(auto: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _breathTimer?.cancel();
+    _audioPlayer.dispose();
+    super.dispose();
   }
 
   String _formatCalories(int calories) {
@@ -34,13 +92,15 @@ class _HomePageState extends State<HomePage> {
     try {
       print('Loading user data from Firestore...');
       final data = await AuthService().getUserData();
-      
+
       if (data == null) {
-        print('⚠️ User data is null after loading. Check console logs for Firebase errors.');
+        print(
+          '⚠️ User data is null after loading. Check console logs for Firebase errors.',
+        );
       } else {
         print('✓ User data loaded successfully: ${data.keys}');
       }
-      
+
       setState(() {
         _userData = data;
         _isLoading = false;
@@ -57,15 +117,11 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _currentIndex == 0 
+      body: _currentIndex == 0
           ? _buildHomeContent()
           : IndexedStack(
               index: _currentIndex - 1,
-              children: [
-                ProfilePage(),
-                ProgressTrackerPage(),
-                SettingsPage(),
-              ],
+              children: [ProfilePage(), ProgressTrackerPage(), SettingsPage()],
             ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
@@ -76,14 +132,8 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         elevation: 8,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           BottomNavigationBarItem(
             icon: Icon(Icons.trending_up),
             label: 'Progress',
@@ -103,11 +153,7 @@ class _HomePageState extends State<HomePage> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF007BFF),
-            Color(0xFF0056B3),
-            Color(0xFFE3F2FD),
-          ],
+          colors: [Color(0xFF007BFF), Color(0xFF0056B3), Color(0xFFE3F2FD)],
           stops: [0.0, 0.6, 1.0],
         ),
       ),
@@ -127,7 +173,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-            
+
             // Quick Actions Section
             SliverToBoxAdapter(
               child: Container(
@@ -143,7 +189,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-            
+
             // Physical Health Section
             SliverToBoxAdapter(
               child: Container(
@@ -152,14 +198,18 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 30),
-                    _buildSectionHeader('Physical Health', Icons.fitness_center, const Color(0xFFFF5722)),
+                    _buildSectionHeader(
+                      'Physical Health',
+                      Icons.fitness_center,
+                      const Color(0xFFFF5722),
+                    ),
                     const SizedBox(height: 16),
                     _buildPhysicalHealthSection(),
                   ],
                 ),
               ),
             ),
-            
+
             // Mental Health Section
             SliverToBoxAdapter(
               child: Container(
@@ -168,14 +218,18 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 30),
-                    _buildSectionHeader('Mental Health', Icons.psychology, const Color(0xFF9C27B0)),
+                    _buildSectionHeader(
+                      'Mental Health',
+                      Icons.psychology,
+                      const Color(0xFF9C27B0),
+                    ),
                     const SizedBox(height: 16),
                     _buildMentalHealthSection(),
                   ],
                 ),
               ),
             ),
-            
+
             // Nutrition Section
             SliverToBoxAdapter(
               child: Container(
@@ -184,18 +238,20 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 30),
-                    _buildSectionHeader('Nutrition & Wellness', Icons.restaurant, const Color(0xFF4CAF50)),
+                    _buildSectionHeader(
+                      'Nutrition & Wellness',
+                      Icons.restaurant,
+                      const Color(0xFF4CAF50),
+                    ),
                     const SizedBox(height: 16),
                     _buildNutritionSection(),
                   ],
                 ),
               ),
             ),
-            
+
             // Bottom spacing
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 100),
-            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
       ),
@@ -271,10 +327,7 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 4),
                     Text(
                       'Ready to achieve your fitness goals?',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                     ),
                   ],
                 ),
@@ -317,11 +370,7 @@ class _HomePageState extends State<HomePage> {
             color: (color ?? const Color(0xFF007BFF)).withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(
-            icon,
-            color: color ?? const Color(0xFF007BFF),
-            size: 20,
-          ),
+          child: Icon(icon, color: color ?? const Color(0xFF007BFF), size: 20),
         ),
         const SizedBox(width: 12),
         Text(
@@ -377,7 +426,7 @@ class _HomePageState extends State<HomePage> {
           subtitle: 'Build muscle and power',
           icon: '💪',
           color: const Color(0xFFFF5722),
-          onTap: () => context.go('/workout-timer/strength_training'),
+          onTap: () => context.go('/strength-plan-selection'),
         ),
         const SizedBox(height: 12),
         _buildMainCard(
@@ -449,11 +498,11 @@ class _HomePageState extends State<HomePage> {
         ),
         const SizedBox(height: 12),
         _buildMainCard(
-          title: 'Hydration Tracker',
-          subtitle: 'Track your daily water intake',
-          icon: '💧',
-          color: const Color(0xFF2196F3),
-          onTap: () => _showHydrationTracker(),
+          title: 'Soothing Music',
+          subtitle: 'Relax with calming melodies',
+          icon: '🎵',
+          color: const Color(0xFF9C27B0),
+          onTap: () => _showSoothingMusic(),
         ),
         const SizedBox(height: 12),
         _buildMainCard(
@@ -467,23 +516,22 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildEnhancedStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildEnhancedStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            color.withOpacity(0.1),
-            color.withOpacity(0.05),
-          ],
+          colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1,
-        ),
+        border: Border.all(color: color.withOpacity(0.2), width: 1),
       ),
       child: Row(
         children: [
@@ -549,10 +597,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 Text(
                   label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -577,10 +622,7 @@ class _HomePageState extends State<HomePage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Colors.white,
-              Colors.white.withOpacity(0.95),
-            ],
+            colors: [Colors.white, Colors.white.withOpacity(0.95)],
           ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
@@ -595,10 +637,7 @@ class _HomePageState extends State<HomePage> {
               offset: const Offset(0, 15),
             ),
           ],
-          border: Border.all(
-            color: color.withOpacity(0.1),
-            width: 1,
-          ),
+          border: Border.all(color: color.withOpacity(0.1), width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -612,22 +651,13 @@ class _HomePageState extends State<HomePage> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      color.withOpacity(0.1),
-                      color.withOpacity(0.05),
-                    ],
+                    colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
                   ),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: color.withOpacity(0.2),
-                    width: 1,
-                  ),
+                  border: Border.all(color: color.withOpacity(0.2), width: 1),
                 ),
                 child: Center(
-                  child: Text(
-                    icon,
-                    style: const TextStyle(fontSize: 40),
-                  ),
+                  child: Text(icon, style: const TextStyle(fontSize: 40)),
                 ),
               ),
               const SizedBox(height: 16),
@@ -652,7 +682,10 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [color, color.withOpacity(0.8)],
@@ -707,16 +740,10 @@ class _HomePageState extends State<HomePage> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              color.withOpacity(0.1),
-              color.withOpacity(0.05),
-            ],
+            colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: color.withOpacity(0.2),
-            width: 1,
-          ),
+          border: Border.all(color: color.withOpacity(0.2), width: 1),
           boxShadow: [
             BoxShadow(
               color: color.withOpacity(0.1),
@@ -805,63 +832,164 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showMeditationOptions() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Choose Meditation Type',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            _buildMeditationOption('Guided Meditation', '🧘‍♀️', '5-20 min sessions'),
-            _buildMeditationOption('Breathing Exercise', '🌬️', 'Calm your mind'),
-            _buildMeditationOption('Body Scan', '👁️', 'Relax your body'),
-            _buildMeditationOption('Sleep Meditation', '😴', 'Better sleep'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMeditationOption(String title, String emoji, String subtitle) {
-    return ListTile(
-      leading: Text(emoji, style: const TextStyle(fontSize: 24)),
-      title: Text(title),
-      subtitle: Text(subtitle),
-      onTap: () {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Starting $title...')),
-        );
-      },
-    );
+    context.go('/meditation');
   }
 
   void _showBreathingExercises() {
+    final List<Map<String, dynamic>> exercises = [
+      {
+        'title': 'Box Breathing',
+        'pattern': '4-4-4-4',
+        'description': 'Inhale 4s • Hold 4s • Exhale 4s • Hold 4s',
+        'inhale': 4,
+        'hold1': 4,
+        'exhale': 4,
+        'hold2': 4,
+        'cycles': 4,
+      },
+      {
+        'title': '4-7-8 Breathing',
+        'pattern': '4-7-8',
+        'description': 'Inhale 4s • Hold 7s • Exhale 8s',
+        'inhale': 4,
+        'hold1': 7,
+        'exhale': 8,
+        'hold2': 0,
+        'cycles': 4,
+      },
+      {
+        'title': 'Coherent Breathing',
+        'pattern': '5-5',
+        'description': 'Inhale 5s • Exhale 5s',
+        'inhale': 5,
+        'hold1': 0,
+        'exhale': 5,
+        'hold2': 0,
+        'cycles': 6,
+      },
+      {
+        'title': 'Calm Breathing',
+        'pattern': '4-6',
+        'description': 'Inhale 4s • Exhale 6s',
+        'inhale': 4,
+        'hold1': 0,
+        'exhale': 6,
+        'hold2': 0,
+        'cycles': 6,
+      },
+      {
+        'title': 'Deep Relaxation',
+        'pattern': '6-2-6',
+        'description': 'Deep inhale 6s • Rest 2s • Long exhale 6s',
+        'inhale': 6,
+        'hold1': 2,
+        'exhale': 6,
+        'hold2': 0,
+        'cycles': 5,
+      },
+      {
+        'title': 'Energy Boost',
+        'pattern': '2-0-2',
+        'description': 'Quick, energizing breaths with no holds',
+        'inhale': 2,
+        'hold1': 0,
+        'exhale': 2,
+        'hold2': 0,
+        'cycles': 10,
+      },
+      {
+        'title': 'Alternate Nostril',
+        'pattern': '4-4-4-4',
+        'description': 'Traditional yogic breathing for balance',
+        'inhale': 4,
+        'hold1': 4,
+        'exhale': 4,
+        'hold2': 4,
+        'cycles': 5,
+      },
+      {
+        'title': 'Ocean Breath',
+        'pattern': '5-0-7',
+        'description': 'Ujjayi breathing with extended exhale',
+        'inhale': 5,
+        'hold1': 0,
+        'exhale': 7,
+        'hold2': 0,
+        'cycles': 6,
+      },
+      {
+        'title': 'Progressive Relaxation',
+        'pattern': '7-4-8',
+        'description': 'Long breaths for deep relaxation',
+        'inhale': 7,
+        'hold1': 4,
+        'exhale': 8,
+        'hold2': 0,
+        'cycles': 4,
+      },
+      {
+        'title': 'Lion\'s Breath',
+        'pattern': '4-0-2',
+        'description': 'Energetic exhale with stress release',
+        'inhale': 4,
+        'hold1': 0,
+        'exhale': 2,
+        'hold2': 0,
+        'cycles': 6,
+      },
+    ];
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Breathing Exercises'),
-        content: const Text('Choose a breathing pattern to help you relax and reduce stress.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Starting breathing exercise...')),
-              );
-            },
-            child: const Text('Start'),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setLocalState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text('Breathing Exercises'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: exercises.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final ex = exercises[index];
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.blueAccent.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: ListTile(
+                      title: Text(ex['title']),
+                      subtitle: Text(
+                        '${ex['description']} • ${ex['cycles']} cycles',
+                      ),
+                      trailing: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          context.push('/breathing-exercise', extra: ex);
+                        },
+                        child: const Text('Start'),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  _breathTimer?.cancel();
+                  Navigator.pop(context);
+                },
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -871,7 +999,9 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Sleep Stories'),
-        content: const Text('Choose a relaxing story to help you fall asleep faster.'),
+        content: const Text(
+          'Choose a relaxing story to help you fall asleep faster.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -891,25 +1021,90 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _showHydrationTracker() {
+  void _showSoothingMusic() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Hydration Tracker'),
-        content: const Text('Track your daily water intake to stay hydrated and healthy.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.music_note, color: Color(0xFF9C27B0)),
+            const SizedBox(width: 8),
+            const Text('Soothing Music'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: _soothingTracks.length,
+            itemBuilder: (context, index) {
+              final music = _soothingTracks[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF9C27B0).withOpacity(0.1),
+                      const Color(0xFF9C27B0).withOpacity(0.05),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF9C27B0).withOpacity(0.2),
+                  ),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF9C27B0).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.play_circle_outline,
+                      color: Color(0xFF9C27B0),
+                      size: 32,
+                    ),
+                  ),
+                  title: Text(
+                    music['title']!,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        music['artist']!,
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      Text(
+                        music['description']!,
+                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _playTrackAt(index);
+                    _openMusicPlayer(currentIndex: index);
+                  },
+                ),
+              );
+            },
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Opening hydration tracker...')),
-              );
-            },
-            child: const Text('Open'),
           ),
         ],
       ),
@@ -918,5 +1113,203 @@ class _HomePageState extends State<HomePage> {
 
   void _showProgressTracker() {
     context.go('/progress-tracker');
+  }
+
+  String _formatDuration(Duration d) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    final minutes = two(d.inMinutes.remainder(60));
+    final seconds = two(d.inSeconds.remainder(60));
+    final hours = d.inHours;
+    return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
+  }
+
+  Future<void> _playUrl(String url, String title) async {
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.play(UrlSource(url));
+      setState(() {
+        _currentlyPlaying = title;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error playing audio: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _playTrackAt(int index) async {
+    if (index < 0 || index >= _soothingTracks.length) return;
+    final track = _soothingTracks[index];
+    setState(() {
+      _currentTrackIndex = index;
+    });
+    await _playUrl(track['url']!, track['title']!);
+  }
+
+  Future<void> _nextTrack({bool auto = false}) async {
+    if (_soothingTracks.isEmpty) return;
+    int next = _currentTrackIndex + 1;
+    if (next >= _soothingTracks.length) {
+      next = 0;
+    }
+    await _playTrackAt(next);
+  }
+
+  Future<void> _previousTrack() async {
+    if (_soothingTracks.isEmpty) return;
+    int prev = _currentTrackIndex - 1;
+    if (prev < 0) {
+      prev = _soothingTracks.length - 1;
+    }
+    await _playTrackAt(prev);
+  }
+
+  void _openMusicPlayer({required int currentIndex}) async {
+    setState(() {
+      _currentTrackIndex = currentIndex;
+    });
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setLocalState) {
+            final current =
+                (_currentTrackIndex >= 0 &&
+                    _currentTrackIndex < _soothingTracks.length)
+                ? _soothingTracks[_currentTrackIndex]
+                : null;
+            final title = current?['title'] ?? 'Now Playing';
+            final artist = current?['artist'] ?? '';
+            final description = current?['description'] ?? '';
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  const Icon(Icons.music_note, color: Color(0xFF9C27B0)),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(title, overflow: TextOverflow.ellipsis)),
+                ],
+              ),
+              content: SizedBox(
+                width: 350,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(artist, style: TextStyle(color: Colors.grey[700])),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                    const SizedBox(height: 16),
+                    Slider(
+                      value: _musicPosition.inMilliseconds
+                          .clamp(0, _musicDuration.inMilliseconds)
+                          .toDouble(),
+                      min: 0,
+                      max: _musicDuration.inMilliseconds.toDouble() == 0
+                          ? 1
+                          : _musicDuration.inMilliseconds.toDouble(),
+                      onChanged: (v) async {
+                        final newPos = Duration(milliseconds: v.toInt());
+                        await _audioPlayer.seek(newPos);
+                      },
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(_formatDuration(_musicPosition)),
+                        Text(_formatDuration(_musicDuration)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          iconSize: 32,
+                          icon: const Icon(
+                            Icons.skip_previous,
+                            color: Color(0xFF9C27B0),
+                          ),
+                          onPressed: () async {
+                            await _previousTrack();
+                            setLocalState(() {});
+                          },
+                          tooltip: 'Previous',
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          iconSize: 32,
+                          icon: const Icon(
+                            Icons.stop_circle,
+                            color: Color(0xFF9C27B0),
+                          ),
+                          onPressed: () async {
+                            await _audioPlayer.stop();
+                          },
+                          tooltip: 'Stop',
+                        ),
+                        const SizedBox(width: 16),
+                        IconButton(
+                          iconSize: 44,
+                          icon: Icon(
+                            _playerState == PlayerState.playing
+                                ? Icons.pause_circle_filled
+                                : Icons.play_circle_fill,
+                            color: const Color(0xFF9C27B0),
+                          ),
+                          onPressed: () async {
+                            if (_playerState == PlayerState.playing) {
+                              await _audioPlayer.pause();
+                            } else {
+                              await _audioPlayer.resume();
+                            }
+                          },
+                          tooltip: _playerState == PlayerState.playing
+                              ? 'Pause'
+                              : 'Play',
+                        ),
+                        const SizedBox(width: 16),
+                        IconButton(
+                          iconSize: 32,
+                          icon: const Icon(
+                            Icons.skip_next,
+                            color: Color(0xFF9C27B0),
+                          ),
+                          onPressed: () async {
+                            await _nextTrack();
+                            setLocalState(() {});
+                          },
+                          tooltip: 'Next',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    await _audioPlayer.stop();
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 }

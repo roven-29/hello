@@ -62,9 +62,7 @@ class _RegisterPageState extends State<RegisterPage> {
       _passwordController.text,
       {
         'name': _nameController.text,
-        'age': 25, // Default age, will be collected in the flow
         'gender': 'Male', // Default gender, will be collected in the flow
-        'weightGoal': 'Maintain', // Default goal, will be collected in the flow
       },
     );
 
@@ -73,14 +71,13 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     if (error == null) {
-      // Navigate to height selection page to collect more user details
+      // Navigate to age selection page to collect more user details
       if (mounted) {
-        context.go('/height-selection', extra: {
+        context.go('/age-selection', extra: {
           'email': _emailController.text,
           'password': _passwordController.text,
           'name': _nameController.text,
-          'age': 25, // Default age, will be collected in the flow
-          'gender': 'Male', // Default gender, will be collected in the flow
+          'gender': 'Male', // Default gender
         });
       }
     } else {
