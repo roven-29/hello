@@ -6,33 +6,36 @@ import 'package:go_router/go_router.dart';
 class HomePlanSelectionPage extends StatelessWidget {
   const HomePlanSelectionPage({super.key});
 
-  Future<void> _handlePlanSelection(BuildContext context, int days) async {
+  void _handlePlanSelection(BuildContext context, int days) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in to select a plan')),
-      );
-      context.go('/login');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in to select a plan')),
+        );
+        context.go('/login');
+      }
       return;
     }
 
     try {
-      // Save the selected plan to Firestore
+      // Save selection to Firestore with authenticated uid
       await FirebaseFirestore.instance.collection('user_plans').add({
-        'userId': uid,
         'type': 'home',
         'days': days,
         'startDate': DateTime.now(),
+        'userId': uid,
       });
 
       if (context.mounted) {
+        // Navigate to the days list page for the selected plan
         context.go('/home-days/$days');
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error saving plan: $e')));
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -40,35 +43,28 @@ class HomePlanSelectionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/home'),
-        ),
-        title: const Text('Choose Your Home Workout Plan'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      appBar: AppBar(title: const Text('Choose Your Home Workout Plan')),
+      body: Center(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text(
-              'Select your preferred plan duration:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              'Select Your Home Workout Duration',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 40),
             _buildPlanCard(
               context,
               days: 7,
               title: '7 Days Home Challenge',
-              description: 'Perfect for beginners or a quick start',
+              description: 'Perfect for beginners to start at home',
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             _buildPlanCard(
               context,
               days: 30,
-              title: '30 Days Home Transformation',
-              description: 'Complete home workout program, no equipment needed',
+              title: '30 Days Home Transform',
+              description: 'Complete home fitness transformation',
             ),
           ],
         ),
@@ -84,34 +80,26 @@ class HomePlanSelectionPage extends StatelessWidget {
   }) {
     return Card(
       elevation: 4,
+      margin: const EdgeInsets.symmetric(horizontal: 20),
       child: InkWell(
         onTap: () => _handlePlanSelection(context, days),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 description,
-                style: const TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Icon(Icons.timer_outlined),
-                  const SizedBox(width: 8),
-                  Text('$days days'),
-                  const Spacer(),
-                  const Icon(Icons.arrow_forward),
-                ],
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
             ],
           ),

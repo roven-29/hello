@@ -25,32 +25,42 @@ class _CardioDaysListPageState extends State<CardioDaysListPage> {
   Future<void> _loadProgress() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please sign in to view progress')),
+          const SnackBar(content: Text('Please sign in to view your progress')),
         );
         context.go('/login');
       }
+      setState(() {
+        currentCompletedDay = 0;
+        isLoading = false;
+      });
       return;
     }
 
     try {
-      final doc = await FirebaseFirestore.instance
+      final snapshot = await FirebaseFirestore.instance
           .collection('user_progress')
           .doc(uid)
           .collection('cardio_workout')
           .doc('current_progress')
           .get();
 
-      setState(() {
-        if (doc.exists && doc.data() != null) {
-          currentCompletedDay = doc.data()!['last_completed_day'] ?? 0;
-        }
-        isLoading = false;
-      });
+      if (snapshot.exists) {
+        setState(() {
+          currentCompletedDay = snapshot.data()?['last_completed_day'] ?? 0;
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          currentCompletedDay = 0;
+          isLoading = false;
+        });
+      }
     } catch (e) {
       print('Error loading progress: $e');
       setState(() {
+        currentCompletedDay = 0;
         isLoading = false;
       });
     }
@@ -64,69 +74,113 @@ class _CardioDaysListPageState extends State<CardioDaysListPage> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/home'),
         ),
-        title: Text('${widget.totalDays} Days Cardio Plan'),
+        title: Text('${widget.totalDays}-Day Cardio Program'),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 1,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-              ),
-              itemCount: widget.totalDays,
-              itemBuilder: (context, index) {
-                final day = index + 1;
-                final isCompleted = day <= currentCompletedDay;
-                final isUnlocked = day <= currentCompletedDay + 1;
-
-                return InkWell(
-                  onTap: isUnlocked
-                      ? () {
-                          context.go(
-                            '/cardio-workout/${widget.totalDays}/$day',
-                          );
-                        }
-                      : null,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isCompleted
-                          ? Theme.of(context).primaryColor.withOpacity(0.8)
-                          : isUnlocked
-                          ? Theme.of(context).primaryColor.withOpacity(0.2)
-                          : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Day ${index + 1}',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: isCompleted
-                                ? Colors.white
-                                : isUnlocked
-                                ? Theme.of(context).primaryColor
-                                : Colors.grey[600],
-                          ),
-                        ),
-                        if (isCompleted) ...[
-                          const SizedBox(height: 4),
-                          const Icon(Icons.check_circle, color: Colors.white),
-                        ] else if (!isUnlocked) ...[
-                          const SizedBox(height: 4),
-                          const Icon(Icons.lock, color: Colors.grey),
-                        ],
-                      ],
-                    ),
+          : Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Current Progress',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      Text(
+                        '${currentCompletedDay}/${widget.totalDays} days',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
                   ),
-                );
-              },
+                ),
+                Expanded(
+                  child: GridView.builder(
+                    padding: const EdgeInsets.all(16),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                    itemCount: widget.totalDays,
+                    itemBuilder: (context, index) {
+                      final day = index + 1;
+                      final isCompleted = day <= currentCompletedDay;
+                      final isAccessible = day <= currentCompletedDay + 1;
+
+                      return _buildDayCard(
+                        context,
+                        day: day,
+                        isCompleted: isCompleted,
+                        isAccessible: isAccessible,
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
+    );
+  }
+
+  Widget _buildDayCard(
+    BuildContext context, {
+    required int day,
+    required bool isCompleted,
+    required bool isAccessible,
+  }) {
+    final color = isCompleted
+        ? Colors.green
+        : isAccessible
+        ? Theme.of(context).primaryColor
+        : Colors.grey;
+
+    return Card(
+      elevation: isAccessible ? 4 : 1,
+      color: isAccessible ? null : Colors.grey[200],
+      child: InkWell(
+        onTap: isAccessible
+            ? () {
+                context.go('/cardio-workout/${widget.totalDays}/$day');
+              }
+            : null,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: color,
+              width: isCompleted || isAccessible ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Day $day',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isAccessible ? null : Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Icon(
+                isCompleted
+                    ? Icons.check_circle
+                    : isAccessible
+                    ? Icons.play_circle_fill
+                    : Icons.lock,
+                color: color,
+                size: 24,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

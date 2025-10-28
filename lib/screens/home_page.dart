@@ -434,7 +434,7 @@ class _HomePageState extends State<HomePage> {
           subtitle: 'Burn calories and improve endurance',
           icon: '❤️',
           color: const Color(0xFFE91E63),
-          onTap: () => context.go('/workout-timer/cardio_workouts'),
+          onTap: () => context.go('/cardio-plan-selection'),
         ),
         const SizedBox(height: 12),
         _buildMainCard(
@@ -442,7 +442,7 @@ class _HomePageState extends State<HomePage> {
           subtitle: 'No equipment needed',
           icon: '🏠',
           color: const Color(0xFF9C27B0),
-          onTap: () => context.go('/workout-timer/home_workouts'),
+          onTap: () => context.go('/home-plan-selection'),
         ),
         const SizedBox(height: 12),
         _buildMainCard(
