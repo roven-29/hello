@@ -34,6 +34,148 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
   DateTime? _lastCaloriesFlush;
   final Duration _caloriesFlushInterval = const Duration(seconds: 15);
 
+  // Helper function to get image path for an exercise
+  String _getExerciseImage(String exerciseName) {
+    // Map exercise names to their image paths (including common variations)
+    final imageMap = {
+      // Yoga poses
+      'Bridge Pose': 'assets/images/Bridge Pose.jpg',
+      'Cat-Cow Stretch': 'assets/images/Cat-Cow Stretch.jpg',
+      'Cat Cow': 'assets/images/Cat-Cow Stretch.jpg',
+      'Child\'s Pose': 'assets/images/Child\'s Pose.webp',
+      'Childs Pose': 'assets/images/Child\'s Pose.webp',
+      'Cobra Pose': 'assets/images/Cobra Pose.jpg',
+      'Downward Dog': 'assets/images/Downward Dog.jpg',
+      'Final Savasana': 'assets/images/Final savasana.png',
+      'Final savasana': 'assets/images/Final savasana.png',
+      'Savasana': 'assets/images/Final savasana.png',
+      'Mountain Pose': 'assets/images/Mountain Pose.jpg',
+      'Pigeon Pose': 'assets/images/Pigeon Pose.jpg',
+      'Seated Forward Bend': 'assets/images/Seated Forward Bend.jpg',
+      'Tree Pose': 'assets/images/Tree Pose.jpg',
+      'Triangle Pose': 'assets/images/Triangle Pose.jpg',
+      'Warrior I': 'assets/images/Warrior I.jpg',
+      'Warrior 1': 'assets/images/Warrior I.jpg',
+      'Warrior II': 'assets/images/Warrior II.jpg',
+      'Warrior 2': 'assets/images/Warrior II.jpg',
+      
+      // Cardio exercises
+      'Burpees': 'assets/images/Burpees.jpg',
+      'burpee': 'assets/images/Burpees.jpg',
+      'Burpee': 'assets/images/Burpees.jpg',
+      'Butt Kicks': 'assets/images/butt kicks.jpg',
+      'Butt kicks': 'assets/images/butt kicks.jpg',
+      'butt kick': 'assets/images/butt kicks.jpg',
+      'Frog Jumps': 'assets/images/frog jumps.jpg',
+      'Frog jumps': 'assets/images/frog jumps.jpg',
+      'frog jump': 'assets/images/frog jumps.jpg',
+      'High Knees': 'assets/images/High knees.jpg',
+      'High knees': 'assets/images/High knees.jpg',
+      'high knee': 'assets/images/High knees.jpg',
+      'Inchworms': 'assets/images/Inchworms.jpg',
+      'inchworm': 'assets/images/Inchworms.jpg',
+      'Jump Squats': 'assets/images/Jump Squats.jpg',
+      'jump squat': 'assets/images/Jump Squats.jpg',
+      'Jumping Jacks': 'assets/images/Jumping Jacks.jpg',
+      'jumping jack': 'assets/images/Jumping Jacks.jpg',
+      'Mountain Climbers': 'assets/images/Mountain Climbers.jpg',
+      'mountain climber': 'assets/images/Mountain Climbers.jpg',
+      'Plank Jacks': 'assets/images/Plank Jacks.jpg',
+      'plank jack': 'assets/images/Plank Jacks.jpg',
+      'Shadow Boxing': 'assets/images/shadow boxing.jpg',
+      'Shadow boxing': 'assets/images/shadow boxing.jpg',
+      'shadow box': 'assets/images/shadow boxing.jpg',
+      'Skater Jumps': 'assets/images/skater jumps.jpg',
+      'Skater Jump': 'assets/images/skater jumps.jpg',
+      'skater': 'assets/images/skater jumps.jpg',
+      'Speed Skaters': 'assets/images/speedskaters.jpg',
+      'Speed skaters': 'assets/images/speedskaters.jpg',
+      'speed skater': 'assets/images/speedskaters.jpg',
+      'Sprint in Place': 'assets/images/sprint in place.jpg',
+      'sprint': 'assets/images/sprint in place.jpg',
+      'Star Jumps': 'assets/images/star jump.jpg',
+      'Star Jump': 'assets/images/star jump.jpg',
+      'star': 'assets/images/star jump.jpg',
+      'Tuck Jumps': 'assets/images/tuck jumps.jpg',
+      'Tuck Jump': 'assets/images/tuck jumps.jpg',
+      'tuck': 'assets/images/tuck jumps.jpg',
+      
+      // Strength exercises
+      'Alternating Plyometric Lunges': 'assets/images/Alternating Plyometric Lunges.jpg',
+      'alternating lunges': 'assets/images/Alternating Plyometric Lunges.jpg',
+      'Bent-over Rows': 'assets/images/Bent-over Rows.jpg',
+      'bent over rows': 'assets/images/Bent-over Rows.jpg',
+      'Bent Over Rows': 'assets/images/Bent-over Rows.jpg',
+      'Bodyweight Squats': 'assets/images/Bodyweight Squats.jpg',
+      'bodyweight squat': 'assets/images/Bodyweight Squats.jpg',
+      'Chest Press': 'assets/images/Chest Press.jpg',
+      'chest press': 'assets/images/Chest Press.jpg',
+      'Crunches': 'assets/images/crunches.jpg',
+      'crunches': 'assets/images/crunches.jpg',
+      'crunch': 'assets/images/crunches.jpg',
+      'Deadlifts': 'assets/images/Deadlifts.jpg',
+      'deadlift': 'assets/images/Deadlifts.jpg',
+      'Dips': 'assets/images/Dips (Chair).jpg',
+      'Dips (Chair)': 'assets/images/Dips (Chair).jpg',
+      'dip': 'assets/images/Dips (Chair).jpg',
+      'Dumbbell Rows': 'assets/images/Dumbbell Rows.jpg',
+      'dumbbell rows': 'assets/images/Dumbbell Rows.jpg',
+      'Flutter Kicks': 'assets/images/Flutter Kicks.jpg',
+      'flutter kicks': 'assets/images/Flutter Kicks.jpg',
+      'Glute Bridges': 'assets/images/Glute Bridges.jpg',
+      'glute bridge': 'assets/images/Glute Bridges.jpg',
+      'Goblet Squats': 'assets/images/Goblet Squats.jpg',
+      'goblet squat': 'assets/images/Goblet Squats.jpg',
+      'Lunges': 'assets/images/Lunges.jpg',
+      'lunge': 'assets/images/Lunges.jpg',
+      'Overhead Press': 'assets/images/Overhead Press.jpg',
+      'overhead press': 'assets/images/Overhead Press.jpg',
+      'Plank': 'assets/images/Plank.jpg',
+      'plank': 'assets/images/Plank.jpg',
+      'Pull-ups': 'assets/images/Pull-ups.jpg',
+      'Pull-ups': 'assets/images/Pull-ups.jpg',
+      'pull up': 'assets/images/Pull-ups.jpg',
+      'Push-ups': 'assets/images/Push-ups.jpg',
+      'Push-ups': 'assets/images/Push-ups.jpg',
+      'push up': 'assets/images/Push-ups.jpg',
+      'Reverse Lunges': 'assets/images/Reverse Lunges.jpg',
+      'reverse lunge': 'assets/images/Reverse Lunges.jpg',
+      'Romanian Deadlift': 'assets/images/Romanian Deadlift.jpg',
+      'romanian deadlift': 'assets/images/Romanian Deadlift.jpg',
+      'Russian Twists': 'assets/images/Russian Twists.jpg',
+      'russian twist': 'assets/images/Russian Twists.jpg',
+      'Shoulder Taps': 'assets/images/Shoulder Taps.jpg',
+      'shoulder taps': 'assets/images/Shoulder Taps.jpg',
+      'Side Plank': 'assets/images/Side Plank.jpg',
+      'side plank': 'assets/images/Side Plank.jpg',
+      'Squats': 'assets/images/Squats.jpg',
+      'squat': 'assets/images/Squats.jpg',
+      'Wall Sit': 'assets/images/Wall Sit.jpg',
+      'wall sit': 'assets/images/Wall Sit.jpg',
+      
+      // Rest
+      'Rest': 'assets/images/fitness_bg.jpg',
+    };
+
+    // Try exact match first
+    if (imageMap.containsKey(exerciseName)) {
+      return imageMap[exerciseName]!;
+    }
+
+    // Try case-insensitive fuzzy matching
+    final normalizedExercise = exerciseName.toLowerCase().trim();
+    for (var entry in imageMap.entries) {
+      final normalizedKey = entry.key.toLowerCase();
+      if (normalizedExercise.contains(normalizedKey) || normalizedKey.contains(normalizedExercise)) {
+        return entry.value;
+      }
+    }
+
+    // Return a default image if no match found
+    print('No image found for exercise: $exerciseName');
+    return 'assets/images/fitness_bg.jpg';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -165,6 +307,44 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
     }
   }
 
+  Widget _buildControlButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+    required Color color,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color, color.withOpacity(0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, color: Colors.white),
+        label: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -203,56 +383,204 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
             ],
             
             if (playing) ...[
-              // Timer display
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
+              // Timer display with large centered exercise image
+              Expanded(
+                child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      Text(
-                        sequence[currentIndex]['name'],
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${remainingSeconds ~/ 60}:${(remainingSeconds % 60).toString().padLeft(2, '0')}',
-                        style: Theme.of(context).textTheme.displayMedium,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          ElevatedButton(
-                            onPressed: () {
-                              _seqTimer?.cancel();
-                              setState(() {
-                                playing = false;
-                              });
-                            },
-                            child: const Text('Stop'),
+                      const SizedBox(height: 20),
+                      // Large Exercise image - centered and prominent (no cropping)
+                      Container(
+                        height: 400,
+                        width: double.infinity,
+                        margin: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 30,
+                              offset: const Offset(0, 10),
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              // Background gradient
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Colors.blue.shade50,
+                                      Colors.purple.shade50,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              // Exercise image - using contain to show full image
+                              Center(
+                                child: Image.asset(
+                                  _getExerciseImage(sequence[currentIndex]['name']),
+                                  fit: BoxFit.contain,
+                                  height: 380,
+                                  width: double.infinity,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    print('Image loading error for: ${sequence[currentIndex]['name']}');
+                                    print('Attempted path: ${_getExerciseImage(sequence[currentIndex]['name'])}');
+                                    return Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [Colors.blue[400]!, Colors.purple[400]!],
+                                        ),
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(Icons.fitness_center, size: 80, color: Colors.white),
+                                          const SizedBox(height: 16),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                                            child: Text(
+                                              sequence[currentIndex]['name'],
+                                              style: const TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
-                          if (currentIndex > 0)
-                            ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  currentIndex--;
-                                  remainingSeconds = sequence[currentIndex]['duration'];
-                                });
-                              },
-                              child: const Text('Previous'),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      // Exercise name with badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Theme.of(context).primaryColor,
+                              Theme.of(context).primaryColor.withOpacity(0.8),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).primaryColor.withOpacity(0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 5),
                             ),
-                          if (currentIndex < sequence.length - 1)
-                            ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  currentIndex++;
-                                  remainingSeconds = sequence[currentIndex]['duration'];
-                                });
-                              },
-                              child: const Text('Next'),
+                          ],
+                        ),
+                        child: Text(
+                          sequence[currentIndex]['name'].toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      // Timer display with progress indicator
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 180,
+                            height: 180,
+                            child: CircularProgressIndicator(
+                              value: (sequence[currentIndex]['duration'] - remainingSeconds) / sequence[currentIndex]['duration'],
+                              strokeWidth: 12,
+                              backgroundColor: Colors.grey[300],
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Theme.of(context).primaryColor,
+                              ),
                             ),
+                          ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${remainingSeconds ~/ 60}:${(remainingSeconds % 60).toString().padLeft(2, '0')}',
+                                style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Exercise ${currentIndex + 1}/${sequence.length}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
+                      const SizedBox(height: 32),
+                      // Control buttons
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            if (currentIndex > 0)
+                              _buildControlButton(
+                                icon: Icons.skip_previous,
+                                label: 'Previous',
+                                onPressed: () {
+                                  setState(() {
+                                    currentIndex--;
+                                    remainingSeconds = sequence[currentIndex]['duration'];
+                                  });
+                                },
+                                color: Colors.grey[700]!,
+                              ),
+                            _buildControlButton(
+                              icon: Icons.stop,
+                              label: 'Stop',
+                              onPressed: () {
+                                _seqTimer?.cancel();
+                                setState(() {
+                                  playing = false;
+                                });
+                              },
+                              color: Colors.red[600]!,
+                            ),
+                            if (currentIndex < sequence.length - 1)
+                              _buildControlButton(
+                                icon: Icons.skip_next,
+                                label: 'Next',
+                                onPressed: () {
+                                  setState(() {
+                                    currentIndex++;
+                                    remainingSeconds = sequence[currentIndex]['duration'];
+                                  });
+                                },
+                                color: Colors.grey[700]!,
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),
