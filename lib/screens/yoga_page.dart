@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:go_router/go_router.dart';
 
@@ -481,18 +481,21 @@ class _YogaPageState extends State<YogaPage> {
         ),
         child: Row(
           children: [
-            // Icon
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: category['color'].withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                category['icon'],
-                color: category['color'],
-                size: 30,
+            // Image thumbnail
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 60,
+                height: 60,
+                child: Image.asset(
+                  _getCategoryPreviewImage(category['title'] as String),
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stack) => Container(
+                    color: category['color'].withOpacity(0.1),
+                    alignment: Alignment.center,
+                    child: Icon(category['icon'], color: category['color']),
+                  ),
+                ),
               ),
             ),
             
@@ -559,6 +562,18 @@ class _YogaPageState extends State<YogaPage> {
         ),
       ),
     );
+  }
+
+  String _getCategoryPreviewImage(String title) {
+    // Pick a representative pose image for each category
+    if (title.contains('Morning')) return 'assets/images/Mountain Pose.jpg';
+    if (title.contains('Evening')) return 'assets/images/Child’s Pose.webp';
+    if (title.contains('Power')) return 'assets/images/Warrior II.jpg';
+    if (title.contains('Yin')) return 'assets/images/Seated Forward Bend.jpg';
+    if (title.contains('Meditation')) return 'assets/images/Final savasana.png';
+    if (title.contains('Prenatal')) return 'assets/images/Bridge Pose.jpg';
+    // Fallback to first pose image
+    return _yogaPoses.first['image'] as String;
   }
 
   Widget _buildDetailChip(IconData icon, String text, Color color) {
