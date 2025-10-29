@@ -38,6 +38,95 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
   DateTime? _lastCaloriesFlush;
   final Duration _caloriesFlushInterval = const Duration(seconds: 15);
 
+  Future<void> _markDayAsCompleted() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in to mark progress')),
+        );
+      }
+      context.go('/login');
+      return;
+    }
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('user_progress')
+          .doc(uid)
+          .collection('home_workouts')
+          .doc('current_progress')
+          .set({
+        'last_completed_day': widget.currentDay,
+        'total_days': widget.totalDays,
+        'last_updated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // Mirror to legacy path for backward compatibility
+      await FirebaseFirestore.instance
+          .collection('user_progress')
+          .doc(uid)
+          .collection('home_workout')
+          .doc('current_progress')
+          .set({
+        'last_completed_day': widget.currentDay,
+        'total_days': widget.totalDays,
+        'last_updated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      setState(() {
+        isCompleted = true;
+      });
+
+      // Record structured entries similar to auto flow
+      await _workoutService.recordWorkout(
+        workoutId: 'home_workouts_day_${widget.currentDay}',
+        workoutName: 'Home Workout Day ${widget.currentDay}',
+        durationSeconds: _totalPlannedSeconds,
+      );
+      await _workoutService.recordPlanDay(
+        planType: 'home_workouts',
+        dayIndex: widget.currentDay,
+        dayName: 'Day ${widget.currentDay}',
+        durationSeconds: _totalPlannedSeconds,
+        exerciseDetails: sequence
+            .where((e) => (e['isRest'] as bool?) != true)
+            .map((e) => {
+                  'name': e['name'],
+                  'duration': e['duration'],
+                })
+            .toList(),
+      );
+
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Day Completed! 🎉'),
+          content: Text(
+            'You\'ve completed Day ${widget.currentDay} of ${widget.totalDays}.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+
+      if (mounted) {
+        context.go('/home-days/${widget.totalDays}');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating progress: $e')),
+        );
+      }
+    }
+  }
+
   // Helper function to get image path for an exercise
   String _getExerciseImage(String exerciseName) {
     // Map exercise names to their image paths (including common variations)
@@ -445,6 +534,13 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
         ),
         title: Text('Day ${widget.currentDay} of ${widget.totalDays}'),
       ),
+      floatingActionButton: !isCompleted
+          ? FloatingActionButton.extended(
+              onPressed: _markDayAsCompleted,
+              icon: const Icon(Icons.check),
+              label: const Text('Complete Workout'),
+            )
+          : null,
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
