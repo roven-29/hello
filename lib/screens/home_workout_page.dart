@@ -186,14 +186,20 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
     setState(() => isLoading = true);
 
     try {
-      // Load the exercises for the current day
-      final ref = FirebaseFirestore.instance
+      // Prefer new structure: home_workouts/day_{N}; fallback to legacy: workouts/home_workout/days/dayN
+      final newDocRef = FirebaseFirestore.instance
+          .collection('home_workouts')
+          .doc('day_${widget.currentDay}');
+      final legacyDocRef = FirebaseFirestore.instance
           .collection('workouts')
           .doc('home_workout')
           .collection('days')
           .doc('day${widget.currentDay}');
 
-      final doc = await ref.get();
+      DocumentSnapshot<Map<String, dynamic>> doc = await newDocRef.get();
+      if (!doc.exists) {
+        doc = await legacyDocRef.get();
+      }
       
       if (!doc.exists) {
         setState(() {
@@ -208,19 +214,27 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
       
       exercises = rawExercises.map((e) => Map<String, dynamic>.from(e)).toList();
 
-      // Check completion status
+      // Check completion status (new collection first, then legacy)
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        final progressRef = FirebaseFirestore.instance
+        final progressNewRef = FirebaseFirestore.instance
+            .collection('user_progress')
+            .doc(user.uid)
+            .collection('home_workouts')
+            .doc('current_progress');
+        final progressOldRef = FirebaseFirestore.instance
             .collection('user_progress')
             .doc(user.uid)
             .collection('home_workout')
             .doc('current_progress');
 
-        final progress = await progressRef.get();
-        if (progress.exists) {
-          final data = progress.data() as Map<String, dynamic>;
-          isCompleted = (data['last_completed_day'] ?? 0) >= widget.currentDay;
+        final progressNew = await progressNewRef.get();
+        final progressOld = !progressNew.exists ? await progressOldRef.get() : null;
+        final pData = progressNew.exists
+            ? progressNew.data() as Map<String, dynamic>
+            : (progressOld?.data() as Map<String, dynamic>?);
+        if (pData != null) {
+          isCompleted = (pData['last_completed_day'] ?? 0) >= widget.currentDay;
         }
       }
 
@@ -273,17 +287,32 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
     if (user == null) return;
 
     try {
-      final progressRef = FirebaseFirestore.instance
+      final progressNewRef = FirebaseFirestore.instance
+          .collection('user_progress')
+          .doc(user.uid)
+          .collection('home_workouts')
+          .doc('current_progress');
+      final progressOldRef = FirebaseFirestore.instance
           .collection('user_progress')
           .doc(user.uid)
           .collection('home_workout')
           .doc('current_progress');
 
+      // Update new path
       await FirebaseFirestore.instance.runTransaction((transaction) async {
-        final doc = await transaction.get(progressRef);
+        final doc = await transaction.get(progressNewRef);
         final currentCalories = (doc.data()?['calories_burned'] as num?)?.toDouble() ?? 0.0;
-        
-        transaction.set(progressRef, {
+        transaction.set(progressNewRef, {
+          'calories_burned': currentCalories + _pendingCaloriesToFlush,
+          'last_updated': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      });
+
+      // Also mirror to legacy path for backward compatibility
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final doc = await transaction.get(progressOldRef);
+        final currentCalories = (doc.data()?['calories_burned'] as num?)?.toDouble() ?? 0.0;
+        transaction.set(progressOldRef, {
           'calories_burned': currentCalories + _pendingCaloriesToFlush,
           'last_updated': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
@@ -650,16 +679,28 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
                             // Update progress in Firestore
                             final user = FirebaseAuth.instance.currentUser;
                             if (user != null) {
-                              FirebaseFirestore.instance
-                                  .collection('user_progress')
-                                  .doc(user.uid)
-                                  .collection('home_workout')
-                                  .doc('current_progress')
-                                  .set({
-                                'last_completed_day': widget.currentDay,
-                                'total_days': widget.totalDays,
-                                'last_updated': FieldValue.serverTimestamp(),
-                              }, SetOptions(merge: true));
+                            // Write to new progress path
+                            FirebaseFirestore.instance
+                                .collection('user_progress')
+                                .doc(user.uid)
+                                .collection('home_workouts')
+                                .doc('current_progress')
+                                .set({
+                              'last_completed_day': widget.currentDay,
+                              'total_days': widget.totalDays,
+                              'last_updated': FieldValue.serverTimestamp(),
+                            }, SetOptions(merge: true));
+                            // Mirror to legacy progress path
+                            FirebaseFirestore.instance
+                                .collection('user_progress')
+                                .doc(user.uid)
+                                .collection('home_workout')
+                                .doc('current_progress')
+                                .set({
+                              'last_completed_day': widget.currentDay,
+                              'total_days': widget.totalDays,
+                              'last_updated': FieldValue.serverTimestamp(),
+                            }, SetOptions(merge: true));
                             }
 
                             // Final calories flush
