@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import '../services/workout_service.dart';
 import 'package:flutter/services.dart';
 
 class HomeWorkoutPage extends StatefulWidget {
@@ -29,6 +30,9 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
   int remainingSeconds = 0;
   Timer? _seqTimer;
   bool playing = false;
+  int _totalPlannedSeconds = 0;
+
+  final WorkoutService _workoutService = WorkoutService();
 
   double _pendingCaloriesToFlush = 0.0;
   DateTime? _lastCaloriesFlush;
@@ -204,18 +208,28 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
         doc = await legacyDocRef.get();
       }
       
-      if (!doc.exists) {
-        setState(() {
-          isLoading = false;
-          exercises = [];
-        });
-        return;
+      List<Map<String, dynamic>> defaultExercises() {
+        return [
+          {'name': 'Jumping Jacks', 'duration': 40},
+          {'name': 'Bodyweight Squats', 'duration': 45},
+          {'name': 'Push-ups', 'duration': 35},
+          {'name': 'Glute Bridges', 'duration': 40},
+          {'name': 'High Knees', 'duration': 40},
+          {'name': 'Plank', 'duration': 40},
+        ];
       }
 
-      final data = doc.data() as Map<String, dynamic>;
-      final List<dynamic> rawExercises = data['exercises'] ?? [];
-      
-      exercises = rawExercises.map((e) => Map<String, dynamic>.from(e)).toList();
+      if (!doc.exists) {
+        // No Firestore data → fall back to a simple default routine
+        exercises = defaultExercises();
+      } else {
+        final data = doc.data() as Map<String, dynamic>;
+        final List<dynamic> rawExercises = data['exercises'] ?? [];
+        exercises = rawExercises.map((e) => Map<String, dynamic>.from(e)).toList();
+        if (exercises.isEmpty) {
+          exercises = defaultExercises();
+        }
+      }
 
       // Check completion status (new collection first, then legacy)
       final user = FirebaseAuth.instance.currentUser;
@@ -244,9 +258,10 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
       // Build timer sequence
       sequence = [];
       for (final exercise in exercises) {
+        final duration = (exercise['duration'] ?? 30) as int;
         sequence.add({
           'name': exercise['name'],
-          'duration': exercise['duration'] ?? 30,
+          'duration': duration,
           'isRest': false,
           'calPerMin': 7.0 // Average calories burned per minute for home exercises
         });
@@ -261,9 +276,36 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
           });
         }
       }
+      // Precompute total planned seconds for logging/progress
+      _totalPlannedSeconds = sequence.fold<int>(0, (sum, e) => sum + (e['duration'] as int));
 
     } catch (e) {
       print('Error loading exercises: $e');
+      // As a safety, ensure we still have a routine
+      if (exercises.isEmpty) {
+        exercises = [
+          {'name': 'Jumping Jacks', 'duration': 40},
+          {'name': 'Bodyweight Squats', 'duration': 45},
+          {'name': 'Push-ups', 'duration': 35},
+          {'name': 'Glute Bridges', 'duration': 40},
+          {'name': 'High Knees', 'duration': 40},
+          {'name': 'Plank', 'duration': 40},
+        ];
+        sequence = [];
+        for (final exercise in exercises) {
+          final duration = (exercise['duration'] ?? 30) as int;
+          sequence.add({
+            'name': exercise['name'],
+            'duration': duration,
+            'isRest': false,
+            'calPerMin': 7.0,
+          });
+          if (exercise != exercises.last) {
+            sequence.add({'name': 'Rest', 'duration': 30, 'isRest': true, 'calPerMin': 1.0});
+          }
+        }
+        _totalPlannedSeconds = sequence.fold<int>(0, (sum, e) => sum + (e['duration'] as int));
+      }
       // Show error message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -283,8 +325,8 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
     super.dispose();
   }
 
-  Future<void> _flushPendingCalories() async {
-    if (_pendingCaloriesToFlush <= 0) return;
+  Future<void> _flushPendingCalories({bool force = false}) async {
+    if (!force && _pendingCaloriesToFlush <= 0) return;
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -397,6 +439,10 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/home-days/${widget.totalDays}'),
+        ),
         title: Text('Day ${widget.currentDay} of ${widget.totalDays}'),
       ),
       body: Padding(
@@ -647,7 +693,7 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
                   onPressed: () {
                     setState(() {
                       currentIndex = 0;
-                      remainingSeconds = sequence[0]['duration'];
+                      remainingSeconds = sequence.isNotEmpty ? sequence[0]['duration'] : 0;
                       playing = true;
                     });
                     
@@ -706,8 +752,28 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
                             }, SetOptions(merge: true));
                             }
 
-                            // Final calories flush
-                            _flushPendingCalories();
+                            // Final calories flush (force)
+                            _flushPendingCalories(force: true);
+
+                            // Record structured session and plan progress like other modes
+                            _workoutService.recordWorkout(
+                              workoutId: 'home_workouts_day_${widget.currentDay}',
+                              workoutName: 'Home Workout Day ${widget.currentDay}',
+                              durationSeconds: _totalPlannedSeconds,
+                            );
+                            _workoutService.recordPlanDay(
+                              planType: 'home_workouts',
+                              dayIndex: widget.currentDay,
+                              dayName: 'Day ${widget.currentDay}',
+                              durationSeconds: _totalPlannedSeconds,
+                              exerciseDetails: sequence
+                                  .where((e) => (e['isRest'] as bool?) != true)
+                                  .map((e) => {
+                                        'name': e['name'],
+                                        'duration': e['duration'],
+                                      })
+                                  .toList(),
+                            );
 
                             // Show completion dialog
                             showDialog(

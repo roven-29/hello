@@ -39,24 +39,30 @@ class _HomeDaysListPageState extends State<HomeDaysListPage> {
     }
 
     try {
-      final snapshot = await FirebaseFirestore.instance
+      final newPath = await FirebaseFirestore.instance
           .collection('user_progress')
           .doc(uid)
-          .collection('home_workout')
+          .collection('home_workouts')
           .doc('current_progress')
           .get();
 
-      if (snapshot.exists) {
-        setState(() {
-          currentCompletedDay = snapshot.data()?['last_completed_day'] ?? 0;
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          currentCompletedDay = 0;
-          isLoading = false;
-        });
-      }
+      final legacyPath = !newPath.exists
+          ? await FirebaseFirestore.instance
+              .collection('user_progress')
+              .doc(uid)
+              .collection('home_workout')
+              .doc('current_progress')
+              .get()
+          : null;
+
+      final data = newPath.exists
+          ? newPath.data()
+          : legacyPath?.data();
+
+      setState(() {
+        currentCompletedDay = (data?['last_completed_day'] as int?) ?? 0;
+        isLoading = false;
+      });
     } catch (e) {
       print('Error loading progress: $e');
       setState(() {
