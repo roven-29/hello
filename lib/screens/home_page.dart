@@ -174,22 +174,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // Quick Actions Section
-            SliverToBoxAdapter(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 20),
-                    _buildSectionHeader('Quick Actions', Icons.flash_on),
-                    const SizedBox(height: 16),
-                    _buildQuickActionsRow(),
-                  ],
-                ),
-              ),
-            ),
-
             // Physical Health Section
             SliverToBoxAdapter(
               child: Container(
@@ -379,39 +363,6 @@ class _HomePageState extends State<HomePage> {
             fontSize: 20,
             fontWeight: FontWeight.bold,
             color: Colors.grey[800],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickActionsRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildQuickActionButton(
-            title: 'Start Workout',
-            icon: Icons.play_arrow,
-            color: const Color(0xFFFF5722),
-            onTap: () => context.go('/workouts'),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildQuickActionButton(
-            title: 'Log Meal',
-            icon: Icons.restaurant,
-            color: const Color(0xFF4CAF50),
-            onTap: () => context.go('/diet-plans'),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildQuickActionButton(
-            title: 'Meditate',
-            icon: Icons.self_improvement,
-            color: const Color(0xFF9C27B0),
-            onTap: () => _showMeditationOptions(),
           ),
         ),
       ],
@@ -721,68 +672,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActionButton({
-    required String title,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.2), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [color, color.withOpacity(0.8)],
-                ),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Icon(icon, color: Colors.white, size: 20),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
         ),
       ),
     );

@@ -24,7 +24,10 @@ android {
         applicationId = "com.example.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+    // cloud_firestore and some Firebase Android libraries require minSdk 23.
+    // Set a project minSdk of 23 to match those libraries and avoid
+    // manifest merger errors like: "uses-sdk:minSdkVersion 21 cannot be smaller than version 23 declared in library"
+    minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

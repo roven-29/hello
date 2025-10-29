@@ -205,12 +205,13 @@ class WorkoutService {
     }
   }
 
-  // Get weekly workout stats
-  Future<Map<String, int>> getWeeklyStats() async {
+  // Get weekly workout stats with real-time updates
+  Stream<Map<String, int>> getWeeklyStatsStream() {
     final userId = _auth.currentUserId;
-    if (userId == null) return {};
+    if (userId == null) return Stream.value({});
 
     try {
+      // Get the start of the current week (Monday)
       final now = DateTime.now();
       final weekStart = now.subtract(Duration(days: now.weekday - 1));
       final weekStartDate = DateTime(
@@ -219,31 +220,45 @@ class WorkoutService {
         weekStart.day,
       );
 
-      final querySnapshot = await _firestore
+      return _firestore
           .collection('workout_sessions')
           .where('userId', isEqualTo: userId)
-          .where('date', isGreaterThan: weekStartDate.toIso8601String())
-          .get();
+          .where(
+            'timestamp',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(weekStartDate),
+          )
+          .snapshots()
+          .map((snapshot) {
+            final Map<String, int> weeklyStats = {};
 
-      final Map<String, int> weeklyStats = {};
+            // Initialize all days with 0
+            for (int i = 1; i <= 7; i++) {
+              weeklyStats[i.toString()] = 0;
+            }
 
-      for (var doc in querySnapshot.docs) {
-        final data = doc.data();
-        final date = DateTime.parse(data['date']);
-        final weekday = date.weekday; // 1 = Monday, 7 = Sunday
+            for (var doc in snapshot.docs) {
+              final data = doc.data();
+              // Handle both Timestamp and String timestamp formats
+              final DateTime timestamp;
+              if (data['timestamp'] is Timestamp) {
+                timestamp = (data['timestamp'] as Timestamp).toDate();
+              } else if (data['timestamp'] is String) {
+                timestamp = DateTime.parse(data['timestamp'] as String);
+              } else {
+                continue; // Skip invalid timestamp
+              }
 
-        if (!weeklyStats.containsKey(weekday.toString())) {
-          weeklyStats[weekday.toString()] = 0;
-        }
-        weeklyStats[weekday.toString()] =
-            (weeklyStats[weekday.toString()] ?? 0) +
-            (data['caloriesBurned'] as num? ?? 0).toInt();
-      }
+              final weekday = timestamp.weekday;
+              weeklyStats[weekday.toString()] =
+                  (weeklyStats[weekday.toString()] ?? 0) +
+                  (data['caloriesBurned'] as num? ?? 0).toInt();
+            }
 
-      return weeklyStats;
+            return weeklyStats;
+          });
     } catch (e) {
-      print('Error getting weekly stats: $e');
-      return {};
+      print('Error setting up weekly stats stream: $e');
+      return Stream.value({});
     }
   }
 

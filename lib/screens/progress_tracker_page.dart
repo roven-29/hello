@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import '../services/auth_service.dart';
 import '../services/workout_service.dart';
 
@@ -12,6 +14,9 @@ class ProgressTrackerPage extends StatefulWidget {
 }
 
 class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
+  final _firestore = FirebaseFirestore.instance;
+  final _auth = AuthService();
+
   Map<String, dynamic>? _userData;
   List<dynamic> _workoutHistory = [];
   Map<String, int> _weeklyStats = {};
@@ -19,36 +24,106 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
   List<Map<String, dynamic>> _planEntries = [];
   bool _isLoading = true;
 
+  // Stream subscriptions
+  StreamSubscription<DocumentSnapshot>? _userDataSubscription;
+  StreamSubscription<QuerySnapshot>? _workoutHistorySubscription;
+  StreamSubscription<QuerySnapshot>? _planProgressSubscription;
+
   @override
   void initState() {
     super.initState();
-    _loadProgressData();
+    _setupStreams();
   }
 
-  Future<void> _loadProgressData() async {
-    setState(() => _isLoading = true);
-    try {
-      final userData = await AuthService().getUserData();
-      final history = await WorkoutService().getWorkoutHistory();
-      final weeklyStats = await WorkoutService().getWeeklyStats();
-      final streakInfo = await WorkoutService().getStreakInfo();
-      final planEntries = await WorkoutService().getPlanProgressEntries(
-        limit: 30,
-      );
+  @override
+  void dispose() {
+    _userDataSubscription?.cancel();
+    _workoutHistorySubscription?.cancel();
+    _planProgressSubscription?.cancel();
+    super.dispose();
+  }
 
-      setState(() {
-        _userData = userData;
-        _workoutHistory = history;
-        _weeklyStats = weeklyStats;
-        _streakInfo = streakInfo;
-        _planEntries = planEntries;
-        _isLoading = false;
-      });
-    } catch (e) {
-      // keep simple error handling here
-      debugPrint('Error loading progress data: $e');
+  void _setupStreams() {
+    final userId = _auth.currentUserId;
+    if (userId == null) {
       setState(() => _isLoading = false);
+      return;
     }
+
+    // User data stream
+    _userDataSubscription = _firestore
+        .collection('users')
+        .doc(userId)
+        .snapshots()
+        .listen((snapshot) {
+          if (snapshot.exists) {
+            setState(() {
+              _userData = snapshot.data();
+              _streakInfo = {
+                'currentStreak': _userData?['currentStreak'] ?? 0,
+                'bestStreak': _userData?['bestStreak'] ?? 0,
+                'lastWorkoutDate': _userData?['lastWorkoutDate'],
+              };
+            });
+          }
+        });
+
+    // Workout history stream
+    final now = DateTime.now();
+    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final weekStartDate = DateTime(
+      weekStart.year,
+      weekStart.month,
+      weekStart.day,
+    );
+
+    _workoutHistorySubscription = _firestore
+        .collection('workout_sessions')
+        .where('userId', isEqualTo: userId)
+        .where('timestamp', isGreaterThanOrEqualTo: weekStartDate)
+        .snapshots()
+        .listen((snapshot) {
+          final Map<String, int> stats = {};
+          final List<dynamic> history = [];
+
+          // Initialize all days with 0
+          for (int i = 1; i <= 7; i++) {
+            stats[i.toString()] = 0;
+          }
+
+          for (var doc in snapshot.docs) {
+            final data = doc.data();
+            history.add(data);
+
+            final timestamp = (data['timestamp'] as Timestamp).toDate();
+            final weekday = timestamp.weekday;
+            stats[weekday.toString()] =
+                (stats[weekday.toString()] ?? 0) +
+                (data['caloriesBurned'] as num? ?? 0).toInt();
+          }
+
+          setState(() {
+            _weeklyStats = stats;
+            _workoutHistory = history;
+          });
+        });
+
+    // Plan progress stream
+    _planProgressSubscription = _firestore
+        .collection('plan_progress')
+        .where('userId', isEqualTo: userId)
+        .orderBy('timestamp', descending: true)
+        .limit(30)
+        .snapshots()
+        .listen((snapshot) {
+          setState(() {
+            _planEntries = snapshot.docs
+                .map((doc) => doc.data() as Map<String, dynamic>)
+                .toList();
+          });
+        });
+
+    setState(() => _isLoading = false);
   }
 
   List<FlSpot> _getWeeklyCaloriesSpots() {
@@ -102,8 +177,68 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
                       height: 180,
                       child: LineChart(
                         LineChartData(
-                          gridData: FlGridData(show: false),
-                          titlesData: FlTitlesData(show: true),
+                          gridData: FlGridData(
+                            show: true,
+                            drawHorizontalLine: true,
+                            horizontalInterval: 100,
+                            getDrawingHorizontalLine: (value) {
+                              return FlLine(
+                                color: Colors.grey.withOpacity(0.2),
+                                strokeWidth: 1,
+                              );
+                            },
+                          ),
+                          titlesData: FlTitlesData(
+                            show: true,
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  const days = [
+                                    'M',
+                                    'T',
+                                    'W',
+                                    'T',
+                                    'F',
+                                    'S',
+                                    'S',
+                                  ];
+                                  final index = value.toInt();
+                                  if (index >= 0 && index < days.length) {
+                                    return Text(
+                                      days[index],
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 12,
+                                      ),
+                                    );
+                                  }
+                                  return const Text('');
+                                },
+                              ),
+                            ),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 100,
+                                getTitlesWidget: (value, meta) {
+                                  return Text(
+                                    value.toInt().toString(),
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 12,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            topTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                            rightTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                          ),
                           borderData: FlBorderData(show: false),
                           lineBarsData: [
                             LineChartBarData(
@@ -111,9 +246,63 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
                               isCurved: true,
                               color: const Color(0xFFFF5722),
                               barWidth: 3,
-                              dotData: FlDotData(show: true),
+                              dotData: FlDotData(
+                                show: true,
+                                getDotPainter: (spot, percent, bar, index) {
+                                  return FlDotCirclePainter(
+                                    radius: 6,
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                    strokeColor: const Color(0xFFFF5722),
+                                  );
+                                },
+                              ),
+                              belowBarData: BarAreaData(
+                                show: true,
+                                color: const Color(0xFFFF5722).withOpacity(0.1),
+                              ),
                             ),
                           ],
+                          lineTouchData: LineTouchData(
+                            enabled: true,
+                            touchTooltipData: LineTouchTooltipData(
+                              fitInsideHorizontally: true,
+                              fitInsideVertically: true,
+                              tooltipRoundedRadius: 8,
+                              tooltipPadding: const EdgeInsets.all(8),
+                              tooltipBorder: const BorderSide(
+                                color: Color(0xFFFF5722),
+                                width: 1,
+                              ),
+                              tooltipMargin: 8,
+                              getTooltipItems: (touchedSpots) {
+                                return touchedSpots.map((
+                                  LineBarSpot touchedSpot,
+                                ) {
+                                  const days = [
+                                    'Mon',
+                                    'Tue',
+                                    'Wed',
+                                    'Thu',
+                                    'Fri',
+                                    'Sat',
+                                    'Sun',
+                                  ];
+                                  final index = touchedSpot.x.toInt();
+                                  final day = index >= 0 && index < days.length
+                                      ? days[index]
+                                      : '';
+                                  return LineTooltipItem(
+                                    '$day\n${touchedSpot.y.toInt()} cal',
+                                    const TextStyle(
+                                      color: Colors.black87,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  );
+                                }).toList();
+                              },
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -136,9 +325,108 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
                                         ) *
                                         1.2)
                                     .toDouble(),
-                          titlesData: FlTitlesData(show: true),
+                          gridData: FlGridData(
+                            show: true,
+                            drawHorizontalLine: true,
+                            horizontalInterval: 100,
+                            getDrawingHorizontalLine: (value) {
+                              return FlLine(
+                                color: Colors.grey.withOpacity(0.2),
+                                strokeWidth: 1,
+                              );
+                            },
+                          ),
+                          titlesData: FlTitlesData(
+                            show: true,
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  const days = [
+                                    'M',
+                                    'T',
+                                    'W',
+                                    'T',
+                                    'F',
+                                    'S',
+                                    'S',
+                                  ];
+                                  final index = value.toInt();
+                                  if (index >= 0 && index < days.length) {
+                                    return Text(
+                                      days[index],
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 12,
+                                      ),
+                                    );
+                                  }
+                                  return const Text('');
+                                },
+                              ),
+                            ),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 100,
+                                getTitlesWidget: (value, meta) {
+                                  return Text(
+                                    value.toInt().toString(),
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 12,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            topTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                            rightTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                          ),
                           borderData: FlBorderData(show: false),
                           barGroups: _getWeeklyWorkoutBars(),
+                          barTouchData: BarTouchData(
+                            enabled: true,
+                            touchTooltipData: BarTouchTooltipData(
+                              fitInsideHorizontally: true,
+                              fitInsideVertically: true,
+                              tooltipRoundedRadius: 8,
+                              tooltipPadding: const EdgeInsets.all(8),
+                              tooltipBorder: const BorderSide(
+                                color: Color(0xFF007BFF),
+                                width: 1,
+                              ),
+                              tooltipMargin: 8,
+                              getTooltipItem:
+                                  (group, groupIndex, rod, rodIndex) {
+                                    const days = [
+                                      'Mon',
+                                      'Tue',
+                                      'Wed',
+                                      'Thu',
+                                      'Fri',
+                                      'Sat',
+                                      'Sun',
+                                    ];
+                                    final day =
+                                        groupIndex >= 0 &&
+                                            groupIndex < days.length
+                                        ? days[groupIndex]
+                                        : '';
+                                    return BarTooltipItem(
+                                      '$day\n${rod.toY.toInt()} cal',
+                                      const TextStyle(
+                                        color: Colors.black87,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    );
+                                  },
+                            ),
+                          ),
                         ),
                       ),
                     ),

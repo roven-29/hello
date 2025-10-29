@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import '../services/auth_service.dart';
+import '../services/theme_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -11,10 +12,11 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  bool _isDarkMode = false;
+  // Enable dark theme and notifications by default
+  bool _isDarkMode = true;
   bool _notificationsEnabled = true;
   bool _workoutReminders = true;
-  bool _mealReminders = false;
+  bool _mealReminders = true;
   String _selectedLanguage = 'English';
 
   @override
@@ -26,10 +28,10 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _isDarkMode = prefs.getBool('dark_mode') ?? false;
+      _isDarkMode = prefs.getBool('dark_mode') ?? true;
       _notificationsEnabled = prefs.getBool('notifications') ?? true;
       _workoutReminders = prefs.getBool('workout_reminders') ?? true;
-      _mealReminders = prefs.getBool('meal_reminders') ?? false;
+      _mealReminders = prefs.getBool('meal_reminders') ?? true;
       _selectedLanguage = prefs.getString('language') ?? 'English';
     });
   }
@@ -60,10 +62,7 @@ class _SettingsPageState extends State<SettingsPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFE3F2FD),
-              Colors.white,
-            ],
+            colors: [Color(0xFFE3F2FD), Colors.white],
           ),
         ),
         child: SafeArea(
@@ -83,14 +82,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(height: 8),
                 Text(
                   'Customize your app experience',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Appearance Section
                 _buildSettingsSection(
                   title: 'Appearance',
@@ -105,14 +101,16 @@ class _SettingsPageState extends State<SettingsPage> {
                         setState(() {
                           _isDarkMode = value;
                         });
+                        // Persist the preference and update the global theme immediately
                         _saveSettings();
+                        ThemeService().setDarkMode(value);
                       },
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Notifications Section
                 _buildSettingsSection(
                   title: 'Notifications',
@@ -156,9 +154,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // General Section
                 _buildSettingsSection(
                   title: 'General',
@@ -183,7 +181,9 @@ class _SettingsPageState extends State<SettingsPage> {
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Privacy Policy feature coming soon!'),
+                            content: Text(
+                              'Privacy Policy feature coming soon!',
+                            ),
                             backgroundColor: Color(0xFF007BFF),
                           ),
                         );
@@ -196,7 +196,9 @@ class _SettingsPageState extends State<SettingsPage> {
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Terms of Service feature coming soon!'),
+                            content: Text(
+                              'Terms of Service feature coming soon!',
+                            ),
                             backgroundColor: Color(0xFF007BFF),
                           ),
                         );
@@ -204,46 +206,19 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
-                // Account Section
+
+                // Account Section (trimmed per request)
                 _buildSettingsSection(
                   title: 'Account',
                   icon: Icons.account_circle,
                   children: [
                     _buildListTile(
-                      title: 'Firebase Connection Test',
-                      subtitle: 'Test Firebase Auth & Firestore',
-                      icon: Icons.cloud_sync,
-                      onTap: () {
-                        context.go('/firebase-test');
-                      },
-                    ),
-                    _buildListTile(
-                      title: 'Export Data',
-                      subtitle: 'Download your fitness data',
-                      icon: Icons.download,
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Export Data feature coming soon!'),
-                            backgroundColor: Color(0xFF007BFF),
-                          ),
-                        );
-                      },
-                    ),
-                    _buildListTile(
                       title: 'Logout',
                       subtitle: 'Sign out of your account',
                       icon: Icons.logout,
                       onTap: () => _showLogoutDialog(),
-                    ),
-                    _buildListTile(
-                      title: 'Delete Account',
-                      subtitle: 'Permanently delete your account',
-                      icon: Icons.delete_forever,
-                      onTap: () => _showDeleteAccountDialog(),
                     ),
                   ],
                 ),
@@ -324,10 +299,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -373,18 +345,12 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     Text(
                       subtitle,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right,
-                color: Colors.grey[400],
-              ),
+              Icon(Icons.chevron_right, color: Colors.grey[400]),
             ],
           ),
         ),
@@ -441,7 +407,9 @@ class _SettingsPageState extends State<SettingsPage> {
         size: 48,
       ),
       children: [
-        const Text('A comprehensive fitness app to help you achieve your health goals.'),
+        const Text(
+          'A comprehensive fitness app to help you achieve your health goals.',
+        ),
         const SizedBox(height: 16),
         const Text('Features:'),
         const Text('• Personalized workout plans'),
@@ -474,39 +442,6 @@ class _SettingsPageState extends State<SettingsPage> {
               foregroundColor: Colors.white,
             ),
             child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteAccountDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Account'),
-        content: const Text(
-          'Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently lost.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Account deletion feature coming soon!'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Colors.red),
-            ),
           ),
         ],
       ),
