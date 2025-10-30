@@ -35,6 +35,7 @@ import '../screens/cardio_workout_page.dart';
 import '../screens/home_plan_selection_page.dart';
 import '../screens/home_days_list_page.dart';
 import '../screens/home_workout_page.dart';
+import '../screens/yoga_workout_page.dart';
 
 final GoRouter router = GoRouter(
   initialLocation: '/',
@@ -254,6 +255,10 @@ final GoRouter router = GoRouter(
         final workoutId = state.pathParameters['workoutId']!;
         return WorkoutTimerPage(workoutId: workoutId);
       },
+    ),
+    GoRoute(
+      path: '/yoga-workout',
+      builder: (context, state) => const YogaWorkoutPage(),
     ),
   ],
 );

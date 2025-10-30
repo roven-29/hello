@@ -401,7 +401,7 @@ class _HomePageState extends State<HomePage> {
           subtitle: 'Improve flexibility and balance',
           icon: '🧘',
           color: const Color(0xFF4CAF50),
-          onTap: () => context.go('/workout-timer/yoga_exercises'),
+          onTap: () => context.go('/yoga-workout'),
         ),
       ],
     );
@@ -1022,10 +1022,7 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error playing audio: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Error playing audio: $e'), backgroundColor: Colors.red),
       );
     }
   }
@@ -1070,9 +1067,9 @@ class _HomePageState extends State<HomePage> {
           builder: (context, setLocalState) {
             final current =
                 (_currentTrackIndex >= 0 &&
-                    _currentTrackIndex < _soothingTracks.length)
-                ? _soothingTracks[_currentTrackIndex]
-                : null;
+                        _currentTrackIndex < _soothingTracks.length)
+                    ? _soothingTracks[_currentTrackIndex]
+                    : null;
             final title = current?['title'] ?? 'Now Playing';
             final artist = current?['artist'] ?? '';
             final description = current?['description'] ?? '';
