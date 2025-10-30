@@ -16,23 +16,69 @@ class _YogaWorkoutPageState extends State<YogaWorkoutPage> {
   bool isLoading = false;
 
   String _getExerciseImage(String exerciseName) {
+    // Map exercise names to their image paths (including common variations)
     final imageMap = {
+      // Yoga poses
       'Bridge Pose': 'assets/images/Bridge Pose.jpg',
+      'bridge pose': 'assets/images/Bridge Pose.jpg',
       'Cat-Cow Stretch': 'assets/images/Cat-Cow Stretch.jpg',
+      'Cat Cow': 'assets/images/Cat-Cow Stretch.jpg',
+      'Cat-Cow': 'assets/images/Cat-Cow Stretch.jpg',
+      'cat-cow stretch': 'assets/images/Cat-Cow Stretch.jpg',
+      'cat cow': 'assets/images/Cat-Cow Stretch.jpg',
       'Child\'s Pose': 'assets/images/Child\'s Pose.webp',
+      'Childs Pose': 'assets/images/Child\'s Pose.webp',
+      'child\'s pose': 'assets/images/Child\'s Pose.webp',
+      'childs pose': 'assets/images/Child\'s Pose.webp',
       'Cobra Pose': 'assets/images/Cobra Pose.jpg',
+      'cobra pose': 'assets/images/Cobra Pose.jpg',
+      'cobra': 'assets/images/Cobra Pose.jpg',
       'Downward Dog': 'assets/images/Downward Dog.jpg',
+      'downward dog': 'assets/images/Downward Dog.jpg',
+      'downward-dog': 'assets/images/Downward Dog.jpg',
       'Final Savasana': 'assets/images/Final savasana.png',
+      'Final savasana': 'assets/images/Final savasana.png',
+      'Savasana': 'assets/images/Final savasana.png',
+      'final savasana': 'assets/images/Final savasana.png',
+      'savasana': 'assets/images/Final savasana.png',
       'Mountain Pose': 'assets/images/Mountain Pose.jpg',
+      'mountain pose': 'assets/images/Mountain Pose.jpg',
+      'mountain': 'assets/images/Mountain Pose.jpg',
       'Pigeon Pose': 'assets/images/Pigeon Pose.jpg',
+      'pigeon pose': 'assets/images/Pigeon Pose.jpg',
+      'pigeon': 'assets/images/Pigeon Pose.jpg',
       'Seated Forward Bend': 'assets/images/Seated Forward Bend.jpg',
+      'seated forward bend': 'assets/images/Seated Forward Bend.jpg',
+      'forward bend': 'assets/images/Seated Forward Bend.jpg',
       'Tree Pose': 'assets/images/Tree Pose.jpg',
+      'tree pose': 'assets/images/Tree Pose.jpg',
+      'tree': 'assets/images/Tree Pose.jpg',
       'Triangle Pose': 'assets/images/Triangle Pose.jpg',
+      'triangle pose': 'assets/images/Triangle Pose.jpg',
+      'triangle': 'assets/images/Triangle Pose.jpg',
       'Warrior I': 'assets/images/Warrior I.jpg',
+      'Warrior 1': 'assets/images/Warrior I.jpg',
+      'warrior i': 'assets/images/Warrior I.jpg',
+      'warrior 1': 'assets/images/Warrior I.jpg',
+      'warrior-i': 'assets/images/Warrior I.jpg',
       'Warrior II': 'assets/images/Warrior II.jpg',
+      'Warrior 2': 'assets/images/Warrior II.jpg',
+      'warrior ii': 'assets/images/Warrior II.jpg',
+      'warrior 2': 'assets/images/Warrior II.jpg',
+      'warrior-ii': 'assets/images/Warrior II.jpg',
+      'warrior-2': 'assets/images/Warrior II.jpg',
+      
+      // Rest
       'Rest': 'assets/images/fitness_bg.jpg',
+      'rest': 'assets/images/fitness_bg.jpg',
     };
 
+    // Try exact match first
+    if (imageMap.containsKey(exerciseName)) {
+      return imageMap[exerciseName]!;
+    }
+
+    // Try case-insensitive fuzzy matching
     final normalizedExercise = exerciseName.toLowerCase().trim();
     for (var entry in imageMap.entries) {
       final normalizedKey = entry.key.toLowerCase();
@@ -41,6 +87,8 @@ class _YogaWorkoutPageState extends State<YogaWorkoutPage> {
       }
     }
 
+    // Return a default image if no match found
+    print('No image found for exercise: $exerciseName');
     return 'assets/images/fitness_bg.jpg';
   }
 
