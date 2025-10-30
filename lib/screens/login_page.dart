@@ -13,7 +13,6 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
-  final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
   void _login() async {

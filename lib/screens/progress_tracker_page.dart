@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import '../services/auth_service.dart';
-import '../services/workout_service.dart';
 
 class ProgressTrackerPage extends StatefulWidget {
   const ProgressTrackerPage({super.key});
@@ -117,9 +116,7 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
         .snapshots()
         .listen((snapshot) {
           setState(() {
-            _planEntries = snapshot.docs
-                .map((doc) => doc.data() as Map<String, dynamic>)
-                .toList();
+            _planEntries = snapshot.docs.map((doc) => doc.data()).toList();
           });
         });
 

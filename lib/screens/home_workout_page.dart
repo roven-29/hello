@@ -227,9 +227,7 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
       'Plank Hold': 'assets/images/Plank.jpg',
       'plank': 'assets/images/Plank.jpg',
       'Pull-ups': 'assets/images/Pull-ups.jpg',
-      'Pull-ups': 'assets/images/Pull-ups.jpg',
       'pull up': 'assets/images/Pull-ups.jpg',
-      'Push-ups': 'assets/images/Push-ups.jpg',
       'Push-ups': 'assets/images/Push-ups.jpg',
       'push up': 'assets/images/Push-ups.jpg',
       'Chair Dips': 'assets/images/Dips (Chair).jpg',
@@ -338,7 +336,7 @@ class _HomeWorkoutPageState extends State<HomeWorkoutPage> {
         final progressOld = !progressNew.exists ? await progressOldRef.get() : null;
         final pData = progressNew.exists
             ? progressNew.data() as Map<String, dynamic>
-            : (progressOld?.data() as Map<String, dynamic>?);
+            : progressOld?.data();
         if (pData != null) {
           isCompleted = (pData['last_completed_day'] ?? 0) >= widget.currentDay;
         }

@@ -294,8 +294,6 @@ class _StrengthWorkoutPageState extends State<StrengthWorkoutPage> {
   int remainingSeconds = 0;
   Timer? _seqTimer;
   bool playing = false;
-  // keep a simple session accumulator (used in earlier iterations)
-  double _accumulatedCalories = 0.0;
 
   void _buildSequenceFromExercises() {
     // If Firestore exercises include durationSeconds, use them; otherwise generate a sample routine
@@ -764,22 +762,6 @@ class _StrengthWorkoutPageState extends State<StrengthWorkoutPage> {
                 // Navigation to next day is gated by completing the current day.
               ],
             ),
-    );
-  }
-
-  Widget _buildExerciseDetail(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(width: 8),
-          Text(value, style: const TextStyle(fontSize: 16)),
-        ],
-      ),
     );
   }
 }
